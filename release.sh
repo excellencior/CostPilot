@@ -2,7 +2,7 @@
 set -e
 
 VERSION="${1:?Usage: ./release.sh <version> (e.g. v1.0.0)}"
-APK_PATH="android/release/costpilot-release-signed.apk"
+APK_PATH="android/release/costpilot.apk"
 
 if [ ! -f "$APK_PATH" ]; then
   echo "Error: APK not found at $APK_PATH"
@@ -17,7 +17,7 @@ gh release create "$VERSION" "$APK_PATH" \
   --notes "## CostPilot $VERSION
 
 ### Download
-Download **CostPilot-release.apk** below to install on your Android device.
+Download **costpilot.apk** below to install on your Android device.
 
 ### What's Inside
 - High-performance dashboard with interactive financial charts

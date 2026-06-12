@@ -14,6 +14,7 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate, onAddEntry, hideFAB = false }) => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isFabVisible, setIsFabVisible] = useState(true);
+    const [isHeaderVisible, setIsHeaderVisible] = useState(true);
     const lastScrollY = useRef(0);
 
 
@@ -34,7 +35,6 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate, onAd
     const navItems: { view: View; icon: string; label: string }[] = [
         { view: 'dashboard', icon: 'dashboard', label: 'Dashboard' },
         { view: 'history', icon: 'history', label: 'History' },
-        { view: 'analysis', icon: 'analytics', label: 'Analysis' },
         { view: 'settings', icon: 'settings', label: 'Settings' },
     ];
 
@@ -175,7 +175,15 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate, onAd
 
                     {/* Main Content Area */}
                     <main className="flex-1 flex flex-col min-w-0 relative h-full">
-                        <header className="flex lg:hidden items-center justify-between py-2 px-4 mx-3 mt-2 bg-brand-surface-light/70 dark:bg-brand-surface-dark/70 backdrop-blur-xl border border-[#AF8F42]/30 dark:border-[#AF8F42]/40 rounded-2xl fixed top-0 left-0 right-0 sm:right-auto z-30 transition-colors shadow-lg shadow-black/5 dark:shadow-black/20" style={{ paddingTop: 'calc(0.5rem + env(safe-area-inset-top))', marginTop: 'calc(0.5rem + env(safe-area-inset-top))' }}>
+                        <header 
+                            className="flex lg:hidden items-center justify-between py-2 px-4 mx-3 bg-brand-surface-light/70 dark:bg-brand-surface-dark/70 backdrop-blur-xl border border-[#AF8F42]/30 dark:border-[#AF8F42]/40 rounded-2xl fixed left-0 right-0 sm:right-auto z-30 transition-all duration-300 shadow-lg shadow-black/5 dark:shadow-black/20" 
+                            style={{ 
+                                top: 'calc(0.5rem + env(safe-area-inset-top))',
+                                transform: isHeaderVisible ? 'translateY(0)' : 'translateY(-150%)',
+                                opacity: isHeaderVisible ? 1 : 0,
+                                pointerEvents: isHeaderVisible ? 'auto' : 'none'
+                            }}
+                        >
                             <div className="flex items-center gap-3">
                                 {/* Brand show only on mobile (when sidebar is hidden) */}
                                 <div className="flex sm:hidden items-center gap-2">
@@ -212,13 +220,15 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate, onAd
                         </header>
 
                         <div 
-                            className={`flex-1 pt-20 sm:pt-20 lg:pt-8 px-5 py-4 md:px-6 md:py-6 lg:px-14 ${hideFAB ? 'pb-[66px] sm:pb-6' : 'pb-24 sm:pb-24 lg:pb-6'} overflow-y-auto w-full max-w-5xl mx-auto`}
+                            className="flex-1 px-5 py-4 md:px-6 md:py-6 lg:px-14 overflow-y-auto w-full max-w-5xl mx-auto main-content-container"
                             onScroll={(e) => {
                                 const currentScrollY = e.currentTarget.scrollTop;
                                 if (currentScrollY > lastScrollY.current + 10) {
                                     setIsFabVisible(false); // Scrolling down
+                                    setIsHeaderVisible(false); // Hide top bar
                                 } else if (currentScrollY < lastScrollY.current - 10 || currentScrollY === 0) {
                                     setIsFabVisible(true);  // Scrolling up or at top
+                                    setIsHeaderVisible(true);  // Show top bar
                                 }
                                 lastScrollY.current = currentScrollY;
                             }}
@@ -231,14 +241,19 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate, onAd
                         {(['dashboard', 'history'] as View[]).includes(currentView) && !hideFAB && (
                             <button
                                 onClick={onAddEntry}
-                                className={`fixed bottom-24 sm:bottom-10 right-6 md:right-10 size-14 rounded-full shadow-2xl shadow-[#AF8F42]/30 flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300 z-40 group overflow-hidden ${isFabVisible ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0 pointer-events-none'}`}
+                                className={`fixed right-6 md:right-10 size-14 rounded-full shadow-2xl shadow-[#AF8F42]/30 flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300 z-40 group overflow-hidden fab-button ${isFabVisible ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0 pointer-events-none'}`}
                             >
                                 <img src="/fab_plus.png" alt="Add Entry" className="size-full object-cover group-hover:rotate-90 transition-transform duration-300" />
                             </button>
                         )}
 
                         {/* Bottom Nav (Mobile Only) */}
-                        <nav className="sm:hidden fixed bottom-2 left-3 right-3 bg-brand-surface-light/90 dark:bg-brand-surface-dark/90 backdrop-blur-md border border-stone-200/60 dark:border-stone-800/60 z-30 flex items-center justify-around px-4 rounded-2xl shadow-lg shadow-black/10 dark:shadow-black/30 transition-colors" style={{ paddingBottom: 'env(safe-area-inset-bottom)', height: 'calc(3.5rem + env(safe-area-inset-bottom))' }}>
+                        <nav 
+                            className="sm:hidden fixed left-1/2 -translate-x-1/2 w-[280px] bg-brand-surface-light/90 dark:bg-brand-surface-dark/90 backdrop-blur-md border border-stone-200/60 dark:border-stone-800/60 z-30 flex items-center justify-around px-2 rounded-2xl shadow-lg shadow-black/10 dark:shadow-black/30 transition-all duration-300 h-14" 
+                            style={{ 
+                                bottom: 'calc(0.5rem + env(safe-area-inset-bottom))' 
+                            }}
+                        >
                             {navItems.map((item) => (
                                 <button
                                     key={item.view}

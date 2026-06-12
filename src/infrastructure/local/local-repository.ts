@@ -212,7 +212,7 @@ export const LocalRepository = {
     // --- SETTINGS ---
     getSettings: () => {
         const data = localStorage.getItem(SETTINGS_KEY);
-        const defaults = { currency: 'USD', theme: 'light', lastView: 'dashboard' };
+        const defaults = { currency: 'BDT', theme: 'light', lastView: 'dashboard' };
         try {
             return data ? { ...defaults, ...JSON.parse(data) } : defaults;
         } catch {

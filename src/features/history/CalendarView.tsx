@@ -6,7 +6,6 @@ import { formatCompactNumber } from '../../entities/financial';
 
 interface CalendarViewProps {
     transactions: Transaction[];
-    categories: Category[];
     currencySymbol: string;
     onTransactionClick: (t: Transaction) => void;
     initialDate?: Date;
@@ -15,7 +14,6 @@ interface CalendarViewProps {
 
 const CalendarView: React.FC<CalendarViewProps> = ({
     transactions,
-    categories,
     currencySymbol,
     onTransactionClick,
     initialDate,
@@ -220,12 +218,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                                         ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400'
                                         : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'
                                         }`}>
-                                        <span className="material-symbols-outlined text-xl">{t.category.icon}</span>
+                                        <span className="material-symbols-outlined text-xl">{t.type === 'income' ? 'trending_up' : 'payments'}</span>
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="font-bold text-sm text-stone-900 dark:text-white truncate">{t.title}</p>
                                         <div className="flex items-center gap-1.5 mt-0.5">
-                                            <span className="text-[9px] text-stone-500 dark:text-stone-400 font-bold uppercase tracking-wider font-brand-accent truncate">{t.category.name}</span>
+                                            <span className={`text-[9px] font-extrabold uppercase tracking-widest leading-none ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-500 dark:text-stone-400'}`}>{t.type}</span>
                                         </div>
                                     </div>
                                     <div className={`font-bold text-base whitespace-nowrap ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-900 dark:text-white'}`}>

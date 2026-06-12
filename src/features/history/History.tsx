@@ -11,15 +11,13 @@ interface HistoryProps {
     onTransactionClick: (t: Transaction) => void;
     onDeleteTransactions: (ids: string[]) => void;
     currencySymbol: string;
-    categories: Category[];
     viewMode: 'summary' | 'calendar';
     onViewModeChange: (mode: 'summary' | 'calendar') => void;
 }
 
-const History: React.FC<HistoryProps> = ({ transactions, onTransactionClick, onDeleteTransactions, currencySymbol, categories, viewMode, onViewModeChange }) => {
+const History: React.FC<HistoryProps> = ({ transactions, onTransactionClick, onDeleteTransactions, currencySymbol, viewMode, onViewModeChange }) => {
     const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
     const [sortBy, setSortBy] = useState<'date' | 'amount' | 'title'>('date');
     const [calendarTypeFilter, setCalendarTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
     const [isSelectMode, setIsSelectMode] = useState(false);
@@ -46,16 +44,13 @@ const History: React.FC<HistoryProps> = ({ transactions, onTransactionClick, onD
     }, [selectedIds, onDeleteTransactions]);
 
 
-    const isFiltering = searchQuery.length > 0 || selectedCategoryId !== 'all';
+    const isFiltering = searchQuery.length > 0;
 
     const filteredResults = useMemo(() => {
         return transactions.filter(t => {
             const title = t.title || '';
-            const categoryName = t.category?.name || '';
-            const matchesSearch = title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                categoryName.toLowerCase().includes(searchQuery.toLowerCase());
-            const matchesCategory = selectedCategoryId === 'all' || t.category?.id === selectedCategoryId;
-            return matchesSearch && matchesCategory;
+            const matchesSearch = title.toLowerCase().includes(searchQuery.toLowerCase());
+            return matchesSearch;
         }).sort((a, b) => {
             if (sortBy === 'date') {
                 const dateSort = new Date(b.date).getTime() - new Date(a.date).getTime();
@@ -70,7 +65,7 @@ const History: React.FC<HistoryProps> = ({ transactions, onTransactionClick, onD
             if (sortBy === 'title') return a.title.localeCompare(b.title);
             return 0;
         });
-    }, [transactions, searchQuery, selectedCategoryId, sortBy]);
+    }, [transactions, searchQuery, sortBy]);
 
     const monthlySummaries = useMemo(() => {
         const groups: {
@@ -245,12 +240,12 @@ const History: React.FC<HistoryProps> = ({ transactions, onTransactionClick, onD
                                                         }`}
                                                 >
                                                     <div className={`size-12 rounded-lg flex items-center justify-center shrink-0 ${t.type === 'income' ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'}`}>
-                                                        <span className="material-symbols-outlined text-2xl">{t.category.icon}</span>
+                                                        <span className="material-symbols-outlined text-2xl">{t.type === 'income' ? 'trending_up' : 'payments'}</span>
                                                     </div>
                                                     <div className="flex-1 min-w-0">
                                                         <p className="font-semibold text-stone-900 dark:text-white truncate">{t.title}</p>
                                                         <div className="flex items-center gap-2 mt-0.5">
-                                                            <span className="text-[10px] text-stone-500 dark:text-stone-400 font-bold uppercase tracking-wider font-brand-accent">{t.category.name}</span>
+                                                            <span className={`text-[10px] font-extrabold uppercase tracking-widest leading-none ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-500 dark:text-stone-400'}`}>{t.type}</span>
                                                         </div>
                                                     </div>
                                                     <div className={`font-bold text-lg ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-900 dark:text-white'}`}>
@@ -295,11 +290,11 @@ const History: React.FC<HistoryProps> = ({ transactions, onTransactionClick, onD
                             {selectedTransactions.map(t => (
                                 <div key={t.id} className="flex items-center gap-2.5 p-2 rounded-lg bg-stone-50 dark:bg-stone-800/60 text-left">
                                     <div className={`size-7 rounded-md flex items-center justify-center shrink-0 ${t.type === 'expense' ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400' : 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'}`}>
-                                        <span className="material-symbols-outlined text-[16px]">{t.category.icon}</span>
+                                        <span className="material-symbols-outlined text-[16px]">{t.type === 'income' ? 'trending_up' : 'payments'}</span>
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-xs font-semibold text-stone-900 dark:text-white truncate">{t.title}</p>
-                                        <p className="text-[10px] text-stone-400 uppercase tracking-wide">{t.category.name}</p>
+                                        <p className="text-[10px] text-stone-400 uppercase tracking-wide">{t.type}</p>
                                     </div>
                                     <span className={`text-xs font-bold tabular-nums ${t.type === 'expense' ? 'text-stone-700 dark:text-stone-300' : 'text-green-600 dark:text-green-400'}`}>
                                         {t.type === 'expense' ? '-' : '+'}{currencySymbol}{t.amount.toLocaleString()}
@@ -360,31 +355,18 @@ const History: React.FC<HistoryProps> = ({ transactions, onTransactionClick, onD
                             />
                         </div>
                     </div>
-                    <div className="md:w-64">
+                    <div className="md:w-48">
                         <Dropdown
-                            label="Category"
+                            label="Sort By"
                             options={[
-                                { id: 'all', name: 'All Categories' },
-                                ...categories.map(c => ({ id: c.id, name: c.name.toUpperCase(), icon: c.icon }))
+                                { id: 'date', name: 'Newest First' },
+                                { id: 'amount', name: 'Highest Amount' },
+                                { id: 'title', name: 'Alphabetical' }
                             ]}
-                            value={selectedCategoryId}
-                            onChange={setSelectedCategoryId}
+                            value={sortBy}
+                            onChange={(val) => setSortBy(val as any)}
                         />
                     </div>
-                    {isFiltering && (
-                        <div className="md:w-48 animate-in slide-in-from-right-2 duration-300">
-                            <Dropdown
-                                label="Sort By"
-                                options={[
-                                    { id: 'date', name: 'Newest First' },
-                                    { id: 'amount', name: 'Highest Amount' },
-                                    { id: 'title', name: 'Alphabetical' }
-                                ]}
-                                value={sortBy}
-                                onChange={(val) => setSortBy(val as any)}
-                            />
-                        </div>
-                    )}
                 </div>
             )}
 
@@ -405,7 +387,6 @@ const History: React.FC<HistoryProps> = ({ transactions, onTransactionClick, onD
                         </div>
                         <CalendarView
                             transactions={transactions}
-                            categories={categories}
                             currencySymbol={currencySymbol}
                             onTransactionClick={onTransactionClick}
                             typeFilter={calendarTypeFilter}
@@ -418,9 +399,9 @@ const History: React.FC<HistoryProps> = ({ transactions, onTransactionClick, onD
                             <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">
                                 Found {filteredResults.length} matches
                             </p>
-                            {(searchQuery || selectedCategoryId !== 'all') && (
+                            {searchQuery && (
                                 <button
-                                    onClick={() => { setSearchQuery(''); setSelectedCategoryId('all'); }}
+                                    onClick={() => { setSearchQuery(''); }}
                                     className="text-[10px] font-bold text-primary-600 uppercase tracking-widest hover:underline"
                                 >
                                     Clear Filters
@@ -440,14 +421,14 @@ const History: React.FC<HistoryProps> = ({ transactions, onTransactionClick, onD
                                             ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400'
                                             : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'
                                             }`}>
-                                            <span className="material-symbols-outlined text-2xl">{t.category.icon}</span>
+                                            <span className="material-symbols-outlined text-2xl">{t.type === 'income' ? 'trending_up' : 'payments'}</span>
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="font-semibold text-stone-900 dark:text-white truncate">{t.title}</p>
                                             <div className="flex items-center gap-2 mt-0.5">
-                                                <span className="text-[10px] text-stone-500 dark:text-stone-400 font-bold uppercase tracking-wider font-brand-accent">{t.category.name}</span>
-                                                <span className="text-[8px] text-stone-300 dark:text-stone-700 font-black">•</span>
-                                                <span className="text-[10px] text-stone-400 dark:text-stone-500 font-medium uppercase tracking-wider">{formatDate(t.date)}</span>
+                                                <span className={`text-[10px] font-extrabold uppercase tracking-widest leading-none ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-500 dark:text-stone-400'}`}>{t.type}</span>
+                                                <span className="text-[8px] text-stone-300 dark:text-stone-700 font-black leading-none">•</span>
+                                                <span className="text-[10px] text-stone-400 dark:text-stone-500 font-medium uppercase tracking-wider leading-none">{formatDate(t.date)}</span>
                                             </div>
                                         </div>
                                         <div className={`font-bold text-lg ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-900 dark:text-white'}`}>

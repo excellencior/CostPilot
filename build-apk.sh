@@ -7,7 +7,8 @@ ALIAS_NAME="costpilot"
 BUILD_OUTPUT_DIR="android/app/build/outputs/apk/release"
 UNSIGNED_APK="$BUILD_OUTPUT_DIR/app-release-unsigned.apk"
 ALIGNED_APK="$BUILD_OUTPUT_DIR/app-release-aligned.apk"
-FINAL_APK="costpilot-release-signed.apk"
+RELEASE_DIR="android/release"
+FINAL_APK="costpilot.apk"
 
 echo "--- CostPilot Build & Sign Tool ---"
 
@@ -123,18 +124,16 @@ if [ -z "$APKSIGNER" ]; then
     exit 1
 fi
 
-RELEASE_DIR="android/release"
 mkdir -p "$RELEASE_DIR"
 
-"$APKSIGNER" sign --ks "$KEYSTORE_FILE" --ks-pass "pass:password123" --out "$FINAL_APK" "$ALIGNED_APK"
+"$APKSIGNER" sign --ks "$KEYSTORE_FILE" --ks-pass "pass:password123" --out "$RELEASE_DIR/$FINAL_APK" "$ALIGNED_APK"
 
 if [ $? -eq 0 ]; then
-    mv "$FINAL_APK" "$RELEASE_DIR/$FINAL_APK"
     echo "------------------------------------------------"
-    echo "SUCCESS: Signed APK created and moved to: $RELEASE_DIR/$FINAL_APK"
+    echo "SUCCESS: Signed APK created at: $RELEASE_DIR/$FINAL_APK"
     echo "------------------------------------------------"
-    rm "$ALIGNED_APK"
-    rm -f "$FINAL_APK.idsig"
+    rm -f "$ALIGNED_APK"
+    rm -f "$RELEASE_DIR/$FINAL_APK.idsig"
 else
     echo "Error: Signing failed."
     exit 1

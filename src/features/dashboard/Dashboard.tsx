@@ -173,40 +173,47 @@ const Dashboard: React.FC<DashboardProps> = ({
         <section className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between px-1">
             <h3 className="font-bold text-stone-900 dark:text-white">Recent Transactions</h3>
-            {hasEntries && (
-              <button
-                onClick={onViewAll}
-                className="text-primary-600 dark:text-primary-400 text-xs font-bold hover:underline"
-              >
-                View All
-              </button>
-            )}
           </div>
 
           <div className="space-y-2">
             {recentTransactions.length > 0 ? (
-              recentTransactions.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => onTransactionClick(t)}
-                  className="w-full card p-3 md:p-4 flex items-center gap-3 md:gap-4 border border-[#AF8F42]/30 dark:border-[#AF8F42]/40 hover:border-[#AF8F42]/60 transition-all duration-500 ease-out hover:shadow-xl hover:shadow-[#AF8F42]/10 group active:scale-[0.99]"
-                >           <div className={`size-12 rounded-lg flex items-center justify-center shrink-0 ${t.type === 'income' ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'
-                  }`}>
-                    <span className="material-symbols-outlined text-2xl">{t.category.icon}</span>
-                  </div>
-                  <div className="flex-1 text-left min-w-0">
-                    <p className="font-bold text-stone-900 dark:text-white truncate">{t.title}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[10px] text-stone-500 dark:text-stone-400 font-bold uppercase tracking-wider font-brand-accent">{t.category.name}</span>
-                      <span className="text-[8px] text-stone-300 dark:text-stone-700 font-black">•</span>
-                      <span className="text-[10px] font-medium text-stone-500 dark:text-stone-400 uppercase tracking-wider">{formatDate(t.date)}</span>
+              <>
+                {recentTransactions.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => onTransactionClick(t)}
+                    className="w-full card p-3 md:p-4 flex items-center gap-3 md:gap-4 border border-[#AF8F42]/30 dark:border-[#AF8F42]/40 hover:border-[#AF8F42]/60 transition-all duration-500 ease-out hover:shadow-xl hover:shadow-[#AF8F42]/10 group active:scale-[0.99]"
+                  >
+                    <div className={`size-12 rounded-lg flex items-center justify-center shrink-0 ${t.type === 'income' ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'
+                    }`}>
+                      <span className="material-symbols-outlined text-2xl">{t.type === 'income' ? 'trending_up' : 'payments'}</span>
                     </div>
+                    <div className="flex-1 text-left min-w-0">
+                      <p className="font-bold text-stone-900 dark:text-white truncate">{t.title}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className={`text-[10px] font-extrabold uppercase tracking-widest leading-none ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-500 dark:text-stone-400'}`}>{t.type}</span>
+                        <span className="text-[8px] text-stone-300 dark:text-stone-700 font-black leading-none">•</span>
+                        <span className="text-[10px] font-medium text-stone-500 dark:text-stone-400 uppercase tracking-wider leading-none">{formatDate(t.date)}</span>
+                      </div>
+                    </div>
+                    <div className={`font-bold text-lg ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-900 dark:text-white'}`}>
+                      {t.type === 'income' ? '+' : '-'}{currencySymbol}{t.amount.toLocaleString()}
+                    </div>
+                  </button>
+                ))}
+
+                {hasEntries && (
+                  <div className="pt-2">
+                    <button
+                      onClick={onViewAll}
+                      className="w-full py-3.5 px-4 rounded-xl bg-stone-100 hover:bg-stone-200 dark:bg-stone-800/60 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300 font-bold text-xs flex items-center justify-center gap-1.5 border border-stone-200/60 dark:border-stone-800 transition-all active:scale-[0.98] shadow-sm uppercase tracking-wider"
+                    >
+                      <span>View All Transactions</span>
+                      <span className="material-symbols-outlined text-base">arrow_forward</span>
+                    </button>
                   </div>
-                  <div className={`font-bold text-lg ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-900 dark:text-white'}`}>
-                    {t.type === 'income' ? '+' : '-'}{currencySymbol}{t.amount.toLocaleString()}
-                  </div>
-                </button>
-              ))
+                )}
+              </>
             ) : (
               <div className="card p-8 flex flex-col items-center justify-center text-stone-400 border-dashed border-stone-200 dark:border-stone-800">
                 <span className="material-symbols-outlined text-4xl mb-2 opacity-20">history_edu</span>

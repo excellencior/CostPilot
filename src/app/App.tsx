@@ -6,14 +6,10 @@ import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import History from '../features/history/History';
 import { View, Transaction, MonthlyData, Category } from '../entities/types';
-import { CATEGORIES } from '../constants';
 import Dashboard from '../features/dashboard/Dashboard';
-import Analysis from '../features/analysis/Analysis';
 import Overview from '../features/dashboard/Overview';
 import Settings from '../features/settings/Settings';
 import NewEntryModal from '../features/transactions/NewEntryModal';
-import CategoryManagement from '../features/categories/CategoryManagement';
-import CategoryEditorModal from '../features/categories/CategoryEditorModal';
 import Support from '../features/static/Support';
 import TermsOfService from '../features/static/TermsOfService';
 import PrivacyPolicy from '../features/static/PrivacyPolicy';
@@ -60,15 +56,11 @@ const AppContent: React.FC = () => {
     const currentView = (location.pathname.split('/')[1] as View) || 'dashboard';
 
     const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
-    const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
     const [transactions, setTransactions] = useState<Transaction[]>([]);
-    const [categories, setCategories] = useState<Category[]>(CATEGORIES);
     const [selectedMonth, setSelectedMonth] = useState<MonthlyData | null>(null);
-    const [editingCategory, setEditingCategory] = useState<Category | null>(null);
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
-    const [currency, setCurrency] = useState(() => LocalRepository.getSettings().currency);
-    const [defaultCategoryType, setDefaultCategoryType] = useState<'income' | 'expense' | undefined>(undefined);
+    const [currency, setCurrency] = useState('BDT');
     const [typeFilter, setTypeFilter] = useState<'income' | 'expense' | null>(null);
     const [historyViewMode, setHistoryViewMode] = useState<'summary' | 'calendar'>('summary');
 
@@ -80,12 +72,6 @@ const AppContent: React.FC = () => {
             setHasAcceptedTerms(value === 'true');
         };
         checkTerms();
-
-        // Android/iOS: Set status bar theme
-        if (Capacitor.isNativePlatform()) {
-            StatusBar.setStyle({ style: Style.Dark }); // White text/icons
-            StatusBar.setBackgroundColor({ color: '#0c0a09' }); // Match app background
-        }
     }, []);
 
     const hideFAB = currentView === 'history' && historyViewMode === 'calendar';
@@ -95,8 +81,16 @@ const AppContent: React.FC = () => {
         const theme = LocalRepository.getSettings().theme;
         if (theme === 'dark') {
             document.documentElement.classList.add('dark');
+            if (Capacitor.isNativePlatform()) {
+                StatusBar.setStyle({ style: Style.Dark });
+                StatusBar.setBackgroundColor({ color: '#0c0a09' });
+            }
         } else {
             document.documentElement.classList.remove('dark');
+            if (Capacitor.isNativePlatform()) {
+                StatusBar.setStyle({ style: Style.Light });
+                StatusBar.setBackgroundColor({ color: '#fcfaf6' }); // Match light background
+            }
         }
     }, []);
 
@@ -108,41 +102,12 @@ const AppContent: React.FC = () => {
     const loadData = useCallback(() => {
         const freshTransactions = LocalRepository.getAllExpenses();
         setTransactions(freshTransactions);
-        
-        const settings = LocalRepository.getSettings();
-        if (currency !== settings.currency) {
-            setCurrency(settings.currency);
-        }
-
-        const localCats = LocalRepository.getAllCategories();
-        setCategories(localCats);
-    }, [currency]);
-
-    // One-time category initialization on mount
-    useEffect(() => {
-        const localCats = LocalRepository.getAllCategories();
-        
-        // Ensure default categories are present in storage
-        const missingDefaults = CATEGORIES.filter(
-            defaultCat => !localCats.some(lc => lc.id === defaultCat.id)
-        ).map(cat => ({ ...cat, name: cat.name.toUpperCase() }));
-
-        if (missingDefaults.length > 0) {
-            LocalRepository.bulkUpsert(missingDefaults as any[], 'category', false);
-            // Refresh categories from storage to include defaults
-            setCategories(LocalRepository.getAllCategories());
-        } else {
-            setCategories(localCats);
-        }
+        setCurrency('BDT');
     }, []);
 
     // Listen for cross-tab or cross-file local storage changes
     useEffect(() => {
         const handleStorageChange = () => {
-            const settings = LocalRepository.getSettings();
-            if (currency !== settings.currency) {
-                setCurrency(settings.currency);
-            }
             applyTheme();
             loadData();
         };
@@ -154,12 +119,12 @@ const AppContent: React.FC = () => {
             window.removeEventListener('costpilot-settings-updated', handleStorageChange);
             window.removeEventListener('storage', handleStorageChange);
         };
-    }, [currency, applyTheme]);
+    }, [applyTheme]);
 
-    // Persist currency whenever it changes
+    // Persist currency (always BDT)
     useEffect(() => {
-        LocalRepository.updateSettings({ currency });
-    }, [currency]);
+        LocalRepository.updateSettings({ currency: 'BDT' });
+    }, []);
 
     // Persist current view whenever it changes
     useEffect(() => {
@@ -268,35 +233,7 @@ const AppContent: React.FC = () => {
     };
 
 
-    const handleSaveCategory = async (catData: Omit<Category, 'id'> | Category) => {
-        const formattedCat = {
-            ...catData,
-            name: catData.name.toUpperCase()
-        };
-
-        if ('id' in formattedCat) {
-            const { id, ...updates } = formattedCat as Category;
-            LocalRepository.upsertCategory({ id, ...updates, user_id: null });
-        } else {
-            const newCat: any = {
-                ...formattedCat,
-                id: generateId(),
-                user_id: null
-            };
-            LocalRepository.upsertCategory(newCat);
-        }
-        setEditingCategory(null);
-        loadData();
-        toast.success(('id' in catData) ? 'Category updated' : 'New category created', {
-            style: {
-                borderRadius: '12px',
-                background: '#1c1917',
-                color: '#fff',
-                fontWeight: 'bold',
-                border: '1px solid #AF8F42'
-            }
-        });
-    };
+    // Categories management removed
 
     const monthlyHistory = useMemo(() => {
         const history: MonthlyData[] = [];
@@ -439,20 +376,8 @@ const AppContent: React.FC = () => {
                                             }}
                                             onDeleteTransactions={handleDeleteTransactions}
                                             currencySymbol={getCurrencySymbol(currency)}
-                                            categories={categories}
                                             viewMode={historyViewMode}
                                             onViewModeChange={setHistoryViewMode}
-                                        />
-                                    }
-                                />
-
-                                <Route
-                                    path="/analysis"
-                                    element={
-                                        <Analysis
-                                            transactions={transactions}
-                                            categories={categories}
-                                            currency={currency}
                                         />
                                     }
                                 />
@@ -462,31 +387,8 @@ const AppContent: React.FC = () => {
                                     element={
                                         <Settings
                                             onNavigate={(v) => navigate(`/${v}`)}
-                                            categoryCount={categories.length}
                                             transactions={transactions}
                                             currency={currency}
-                                            setCurrency={setCurrency}
-                                        />
-                                    }
-                                />
-
-                                <Route
-                                    path="/category-picker"
-                                    element={
-                                        <CategoryManagement
-                                            categories={categories}
-                                            onBack={() => navigate('/settings')}
-                                            onAddCategory={(typeArg) => {
-                                                setEditingCategory(null);
-                                                // Handle case where typeArg might be a MouseEvent
-                                                const actualType = typeof typeArg === 'string' ? typeArg : undefined;
-                                                setDefaultCategoryType(actualType);
-                                                setIsCategoryModalOpen(true);
-                                            }}
-                                            onEditCategory={(cat) => {
-                                                setEditingCategory(cat);
-                                                setIsCategoryModalOpen(true);
-                                            }}
                                         />
                                     }
                                 />
@@ -506,19 +408,6 @@ const AppContent: React.FC = () => {
                             onSave={handleSaveTransaction}
                             onDelete={handleDeleteTransaction}
                             editingTransaction={editingTransaction}
-                            categories={categories}
-                        />
-
-                        <CategoryEditorModal
-                            isOpen={isCategoryModalOpen}
-                            onClose={() => {
-                                setIsCategoryModalOpen(false);
-                                setEditingCategory(null);
-                                setDefaultCategoryType(undefined);
-                            }}
-                            onSave={handleSaveCategory}
-                            editingCategory={editingCategory}
-                            defaultType={defaultCategoryType}
                         />
 
                         <Toaster position="top-center" />

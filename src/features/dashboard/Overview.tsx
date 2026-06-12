@@ -253,12 +253,12 @@ const Overview: React.FC<OverviewProps> = ({ month, transactions, onBack, onTran
                               }`}
                           >
                             <div className={`size-12 rounded-lg flex items-center justify-center bg-stone-50 dark:bg-stone-800 shrink-0 ${t.type === 'expense' ? 'text-rose-600 dark:text-rose-400' : 'text-green-600 dark:text-green-400'}`}>
-                              <span className="material-symbols-outlined text-2xl">{t.category.icon}</span>
+                              <span className="material-symbols-outlined text-2xl">{t.type === 'income' ? 'trending_up' : 'payments'}</span>
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="font-semibold text-stone-900 dark:text-white truncate">{t.title}</p>
                               <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider font-brand-accent">{t.category.name}</span>
+                                <span className={`text-[10px] font-extrabold uppercase tracking-widest leading-none ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-500 dark:text-stone-400'}`}>{t.type}</span>
                               </div>
                             </div>
                             <div className="text-right">
@@ -310,11 +310,11 @@ const Overview: React.FC<OverviewProps> = ({ month, transactions, onBack, onTran
             {selectedTransactions.map(t => (
               <div key={t.id} className="flex items-center gap-2.5 p-2 rounded-lg bg-stone-50 dark:bg-stone-800/60 text-left">
                 <div className={`size-7 rounded-md flex items-center justify-center shrink-0 ${t.type === 'expense' ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400' : 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'}`}>
-                  <span className="material-symbols-outlined text-[16px]">{t.category.icon}</span>
+                  <span className="material-symbols-outlined text-[16px]">{t.type === 'income' ? 'trending_up' : 'payments'}</span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-stone-900 dark:text-white truncate">{t.title}</p>
-                  <p className="text-[10px] text-stone-400 uppercase tracking-wide">{t.category.name}</p>
+                  <p className="text-[10px] text-stone-400 uppercase tracking-wide">{t.type}</p>
                 </div>
                 <span className={`text-xs font-bold tabular-nums ${t.type === 'expense' ? 'text-stone-700 dark:text-stone-300' : 'text-green-600 dark:text-green-400'}`}>
                   {t.type === 'expense' ? '-' : '+'}{currencySymbol}{t.amount.toLocaleString()}

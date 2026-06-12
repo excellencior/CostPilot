@@ -16,10 +16,8 @@ import { toast } from 'react-hot-toast';
 
 interface SettingsProps {
 	onNavigate: (view: View) => void;
-	categoryCount: number;
 	transactions: Transaction[];
 	currency: string;
-	setCurrency: (c: string) => void;
 }
 
 const CURRENCIES = [
@@ -31,10 +29,8 @@ const CURRENCIES = [
 
 const Settings: React.FC<SettingsProps> = ({
 	onNavigate,
-	categoryCount,
 	transactions,
-	currency,
-	setCurrency
+	currency
 }) => {
 	const backupService = useLocalBackup();
 	const { isEnabled, backupTime, enableBackup, disableBackup, setBackupTime, performManualBackup, restoreFromBackup, hasDirectoryAccess, requestDirectoryAccess, directoryName, backupStatus, statusMessage, lastBackupTime, getMostRecentBackup, parseBackupFile } = backupService;
@@ -221,11 +217,9 @@ const Settings: React.FC<SettingsProps> = ({
 
 			// --- Transactions table ---
 			const tableData = filteredTransactions.map(t => {
-				const categoryName = t.category && typeof t.category === 'object' ? t.category.name : (t.category || '-');
 				return [
 					formatDate(t.date),
 					t.title || 'Untitled',
-					categoryName,
 					t.type === 'expense' ? `-${currencyCode} ${t.amount.toLocaleString()}` : `+${currencyCode} ${t.amount.toLocaleString()}`
 				];
 			});
@@ -242,7 +236,7 @@ const Settings: React.FC<SettingsProps> = ({
 
 			autoTable(doc, {
 				startY: txStartY + 6,
-				head: [['Date', 'Description', 'Category', `Amount`]],
+				head: [['Date', 'Description', `Amount`]],
 				body: tableData,
 				theme: 'grid',
 				headStyles: {
@@ -264,11 +258,11 @@ const Settings: React.FC<SettingsProps> = ({
 					lineWidth: 0.2,
 				},
 				columnStyles: {
-					0: { cellWidth: 36 },
-					3: { halign: 'right', cellWidth: 38, fontStyle: 'bold' }
+					0: { cellWidth: 40 },
+					2: { halign: 'right', cellWidth: 45, fontStyle: 'bold' }
 				},
 				didParseCell: function (data) {
-					if (data.section === 'body' && data.column.index === 3) {
+					if (data.section === 'body' && data.column.index === 2) {
 						const val = data.cell.text[0];
 						if (val.startsWith('-')) {
 							data.cell.styles.textColor = expenseRed;
@@ -336,17 +330,14 @@ const Settings: React.FC<SettingsProps> = ({
 				return;
 			}
 
-			const headers = ['Date', 'Title', 'Category', 'Type', 'Amount', 'Currency', 'Location'];
+			const headers = ['Date', 'Title', 'Type', 'Amount', 'Currency', 'Location'];
 			const rows = filteredTransactions.map(t => {
-				const categoryName = t.category && typeof t.category === 'object' ? t.category.name : (t.category || '');
 				const safeTitle = (t.title || '').replace(/"/g, '""');
-				const safeCategory = (categoryName || '').replace(/"/g, '""');
 				const safeLocation = (t.location || '').replace(/"/g, '""');
 
 				return [
 					t.date,
 					`"${safeTitle}"`,
-					`"${safeCategory}"`,
 					t.type,
 					t.amount,
 					currency,
@@ -529,15 +520,13 @@ const Settings: React.FC<SettingsProps> = ({
 							>
 								<div className={`size-12 rounded-lg flex items-center justify-center shrink-0 ${t.type === 'income' ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'
 									}`}>
-									<span className="material-symbols-outlined text-2xl">{t.category?.icon || (t.type === 'income' ? 'add_box' : 'payments')}</span>
+									<span className="material-symbols-outlined text-2xl">{t.type === 'income' ? 'trending_up' : 'payments'}</span>
 								</div>
 								<div className="flex-1 text-left min-w-0">
 									<p className="font-bold text-stone-900 dark:text-white truncate tracking-tight">{t.title || 'Untitled'}</p>
 									<div className="flex flex-col mt-0.5">
-										<span className="text-[10px] text-stone-500 dark:text-stone-400 font-bold uppercase tracking-wider font-brand-accent">
-											{t.category?.name || 'Category'}
-										</span>
-										<span className="text-[9px] font-medium text-stone-400 dark:text-stone-500 uppercase tracking-wider leading-none mt-0.5">
+										<span className={`text-[10px] font-extrabold uppercase tracking-widest leading-none ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-500 dark:text-stone-400'}`}>{t.type}</span>
+										<span className="text-[9px] font-medium text-stone-400 dark:text-stone-500 uppercase tracking-wider leading-none mt-1">
 											{formatDate(t.date)}
 										</span>
 									</div>
@@ -580,47 +569,7 @@ const Settings: React.FC<SettingsProps> = ({
 				</button>
 			</div>
 
-			<div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-				{/* Categories Shortcut */}
-				<button
-					onClick={() => onNavigate('category-picker')}
-					className="card-section p-4 flex flex-col justify-between text-left hover:border-primary-600 dark:hover:border-primary-400 group transition-all active:scale-[0.98]"
-				>
-					<div>
-						<p className="text-xs font-bold text-stone-500 uppercase tracking-widest mb-1 group-hover:text-primary-600 dark:group-hover:text-primary-400">Categories</p>
-						<p className="text-2xl font-bold text-stone-900 dark:text-white">{categoryCount}</p>
-						<p className="text-xs text-stone-500 mt-1">Custom labels for your transactions.</p>
-					</div>
-					<div className="flex items-center gap-2 mt-4 text-primary-600 dark:text-primary-400 font-bold text-sm">
-						<span>Manage Categories</span>
-						<span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
-					</div>
-				</button>
-
-				{/* Preferences - Currency */}
-				<div className="card-section p-4 relative group">
-					<div className="flex items-center justify-between">
-						<div>
-							<p className="text-xs font-bold text-stone-500 uppercase tracking-widest mb-1">Primary Currency</p>
-							<div className="flex items-baseline gap-2">
-								<p className="text-2xl font-bold text-stone-900 dark:text-white">{currency}</p>
-								<p className="text-xs font-bold text-stone-400">{CURRENCIES.find(c => c.code === currency)?.name}</p>
-							</div>
-						</div>
-
-						<Dropdown
-							label=""
-							placeholder="Select"
-							buttonText="Change"
-							options={CURRENCIES.map(c => ({ id: c.code, name: `${c.symbol} ${c.code}` }))}
-							value={currency}
-							onChange={setCurrency}
-							className="w-auto min-w-[80px]"
-						/>
-					</div>
-					<p className="text-xs text-stone-500 mt-2">All financial metrics will use this symbol.</p>
-				</div>
+			<div className="space-y-5">
 
 				{/* Data Exports */}
 				<div className="card-section p-4 space-y-4 md:col-span-2">

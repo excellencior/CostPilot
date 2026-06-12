@@ -20,6 +20,5 @@ export const formatCompactNumber = (number: number) => {
 };
 
 export const getCurrencySymbol = (code: string) => {
-    const symbols: Record<string, string> = { 'USD': '$', 'BDT': '৳', 'EUR': '€' };
-    return symbols[code] || '$';
+    return '৳';
 };
