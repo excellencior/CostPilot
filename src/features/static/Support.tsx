@@ -1,10 +1,12 @@
 import React from 'react';
+import { useLanguage } from '../../application/contexts/LanguageContext';
 
 interface SupportProps {
     onBack: () => void;
 }
 
 const Support: React.FC<SupportProps> = ({ onBack }) => {
+    const { t } = useLanguage();
     return (
         <div className="max-w-2xl mx-auto py-8 px-4 animate-fade-in">
             {/* Header */}
@@ -15,7 +17,7 @@ const Support: React.FC<SupportProps> = ({ onBack }) => {
                 >
                     <span className="material-symbols-outlined">home</span>
                 </button>
-                <h1 className="text-3xl font-extrabold text-stone-900 dark:text-white tracking-tight">Get Help</h1>
+                <h1 className="text-3xl font-extrabold text-stone-900 dark:text-white tracking-tight">{t('support.title')}</h1>
             </div>
 
             {/* Main Content */}
@@ -33,7 +35,7 @@ const Support: React.FC<SupportProps> = ({ onBack }) => {
                             <h2 className="text-2xl font-bold text-stone-900 dark:text-white mb-1">Apurbo</h2>
                             <p className="text-primary-600 dark:text-primary-400 font-bold tracking-widest uppercase text-xs mb-4">@abturjo</p>
                             <p className="text-stone-600 dark:text-stone-300 text-sm leading-relaxed mb-6 italic">
-                                "CostPilot is designed to be a simple, private, and elegant way to track your finances. I’m constantly working to make it better for you."
+                                {t('support.quote')}
                             </p>
 
                             <a
@@ -52,20 +54,20 @@ const Support: React.FC<SupportProps> = ({ onBack }) => {
                     <div className="card p-6 border-stone-100 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-900/30">
                         <div className="flex items-center gap-3 mb-3 text-amber-600 dark:text-amber-400">
                             <span className="material-symbols-outlined">security</span>
-                            <h3 className="font-bold">Privacy First</h3>
+                            <h3 className="font-bold">{t('support.privacy_title')}</h3>
                         </div>
                         <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
-                            Your data stays strictly on your device or in your private cloud backup. I never see or touch your transactions.
+                            {t('support.privacy_desc')}
                         </p>
                     </div>
 
                     <div className="card p-6 border-stone-100 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-900/30">
                         <div className="flex items-center gap-3 mb-3 text-emerald-600 dark:text-emerald-400">
                             <span className="material-symbols-outlined">update</span>
-                            <h3 className="font-bold">Continuous Updates</h3>
+                            <h3 className="font-bold">{t('support.update_title')}</h3>
                         </div>
                         <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
-                            New features and UI refinements are added regularly based on user feedback. Feel free to suggest anything!
+                            {t('support.update_desc')}
                         </p>
                     </div>
                 </div>
@@ -73,7 +75,7 @@ const Support: React.FC<SupportProps> = ({ onBack }) => {
                 {/* Support Message */}
                 <div className="text-center py-6">
                     <p className="text-stone-400 dark:text-stone-500 text-[11px] font-bold uppercase tracking-[0.2em]">
-                        Dedicated to my father
+                        {t('footer.dedicated')}
                     </p>
                     <div className="w-12 h-px bg-[#AF8F42]/30 mx-auto mt-4"></div>
                 </div>

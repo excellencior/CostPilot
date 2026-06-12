@@ -16,6 +16,7 @@ import PrivacyPolicy from '../features/static/PrivacyPolicy';
 import LandingPage from '../features/static/LandingPage';
 import { LocalRepository } from '../infrastructure/local/local-repository';
 import { LocalBackupProvider } from '../application/contexts/LocalBackupContext';
+import { LanguageProvider } from '../application/contexts/LanguageContext';
 import Layout from '../shared/Layout';
 import { Toaster, toast } from 'react-hot-toast';
 import { getCurrencySymbol } from '../entities/financial';
@@ -100,8 +101,10 @@ const AppContent: React.FC = () => {
 
     // Simplified loadData: just fetch what's in repo
     const loadData = useCallback(() => {
-        const freshTransactions = LocalRepository.getAllExpenses();
-        setTransactions(freshTransactions);
+        const now = new Date();
+        const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const freshTransactions = LocalRepository.getExpensesForMonth(currentMonthKey);
+        setTransactions(freshTransactions as Transaction[]);
         setCurrency('BDT');
     }, []);
 
@@ -233,67 +236,29 @@ const AppContent: React.FC = () => {
     };
 
 
-    // Categories management removed
-
     const monthlyHistory = useMemo(() => {
-        const history: MonthlyData[] = [];
-        const transactionsByMonth: { [key: string]: Transaction[] } = {};
-
-        transactions.forEach(t => {
-            const monthKey = `${t.date.substring(0, 7)}`;
-            if (!transactionsByMonth[monthKey]) {
-                transactionsByMonth[monthKey] = [];
-            }
-            transactionsByMonth[monthKey].push(t);
-        });
-
-        Object.keys(transactionsByMonth).sort().reverse().forEach(monthKey => {
-            const monthTransactions = transactionsByMonth[monthKey];
-            const totalIncome = monthTransactions
-                .filter(t => t.type === 'income')
-                .reduce((sum, t) => sum + t.amount, 0);
-            const totalExpenses = monthTransactions
-                .filter(t => t.type === 'expense')
-                .reduce((sum, t) => sum + t.amount, 0);
-
-            const dateDate = new Date(`${monthKey}-01`);
-
-            history.push({
-                month: dateDate.toLocaleString('default', { month: 'long' }),
-                year: dateDate.getFullYear(),
-                income: totalIncome,
-                expense: totalExpenses,
-            });
-        });
-
-        // Always ensure current month is present and at the top if no future entries exist
-        const now = new Date();
-        const currentMonthName = now.toLocaleString('default', { month: 'long' });
-        const currentYear = now.getFullYear();
-
-        const currentMonthIdx = history.findIndex(h => h.month === currentMonthName && h.year === currentYear);
-
-        if (currentMonthIdx === -1) {
-            const currentMonthObj = {
-                month: currentMonthName,
-                year: currentYear,
-                income: 0,
-                expense: 0
+        const monthsList = LocalRepository.getAvailableMonths();
+        const monthsEn = [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ];
+        return monthsList.map(m => {
+            const sum = LocalRepository.getMonthSummary(m.monthKey);
+            const monthName = monthsEn[m.month - 1] || 'January';
+            return {
+                month: monthName,
+                year: m.year,
+                income: sum?.income || 0,
+                expense: sum?.expense || 0
             };
-
-            const insertIdx = history.findIndex(h => h.year < currentYear || (h.year === currentYear && new Date(`${h.month} 1, ${h.year}`).getMonth() < now.getMonth()));
-            if (insertIdx === -1) history.push(currentMonthObj);
-            else history.splice(insertIdx, 0, currentMonthObj);
-        }
-
-        return history;
+        });
     }, [transactions]);
 
     const getMonthTransactions = (monthData: MonthlyData) => {
-        return transactions.filter(t => {
-            const d = new Date(t.date);
-            return d.toLocaleString('default', { month: 'long' }) === monthData.month && d.getFullYear() === monthData.year;
-        });
+        if (!monthData) return [];
+        const dateObj = new Date(`${monthData.month} 1, ${monthData.year}`);
+        const monthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+        return LocalRepository.getExpensesForMonth(monthKey) as Transaction[];
     };
 
     const handleViewChange = (newView: View) => {
@@ -308,8 +273,42 @@ const AppContent: React.FC = () => {
                     <LandingPage onAccepted={() => setHasAcceptedTerms(true)} />
                 </RequireTerms>
             } />
-            <Route path="/privacy" element={<PrivacyPolicy onBack={() => navigate(-1)} />} />
-            <Route path="/terms" element={<TermsOfService onBack={() => navigate(-1)} />} />
+            <Route path="/privacy" element={
+                hasAcceptedTerms ? (
+                    <RequireTerms hasAcceptedTerms={hasAcceptedTerms}>
+                        <Layout
+                            currentView="privacy"
+                            onNavigate={handleViewChange}
+                            onAddEntry={() => setIsEntryModalOpen(true)}
+                            hideFAB={true}
+                        >
+                            <div className="animate-slide-up w-full">
+                                <PrivacyPolicy onBack={() => navigate('/settings')} />
+                            </div>
+                        </Layout>
+                    </RequireTerms>
+                ) : (
+                    <PrivacyPolicy onBack={() => navigate(-1)} />
+                )
+            } />
+            <Route path="/terms" element={
+                hasAcceptedTerms ? (
+                    <RequireTerms hasAcceptedTerms={hasAcceptedTerms}>
+                        <Layout
+                            currentView="terms"
+                            onNavigate={handleViewChange}
+                            onAddEntry={() => setIsEntryModalOpen(true)}
+                            hideFAB={true}
+                        >
+                            <div className="animate-slide-up w-full">
+                                <TermsOfService onBack={() => navigate('/settings')} />
+                            </div>
+                        </Layout>
+                    </RequireTerms>
+                ) : (
+                    <TermsOfService onBack={() => navigate(-1)} />
+                )
+            } />
 
             {/* App Layout Route block */}
             <Route path="/*" element={
@@ -369,7 +368,6 @@ const AppContent: React.FC = () => {
                                     path="/history"
                                     element={
                                         <History
-                                            transactions={transactions}
                                             onTransactionClick={(t) => {
                                                 setEditingTransaction(t);
                                                 setIsEntryModalOpen(true);
@@ -387,7 +385,6 @@ const AppContent: React.FC = () => {
                                     element={
                                         <Settings
                                             onNavigate={(v) => navigate(`/${v}`)}
-                                            transactions={transactions}
                                             currency={currency}
                                         />
                                     }
@@ -420,9 +417,11 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
     return (
-        <LocalBackupProvider>
-            <AppContent />
-        </LocalBackupProvider>
+        <LanguageProvider>
+            <LocalBackupProvider>
+                <AppContent />
+            </LocalBackupProvider>
+        </LanguageProvider>
     );
 };
 

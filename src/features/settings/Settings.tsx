@@ -13,10 +13,11 @@ import TimePicker, { TimePickerHandle } from '../../shared/ui/TimePicker';
 import ConfirmModal from '../../shared/ui/ConfirmModal';
 import { useLocalBackup } from '../../application/contexts/LocalBackupContext';
 import { toast } from 'react-hot-toast';
+import { useLanguage, Language } from '../../application/contexts/LanguageContext';
 
 interface SettingsProps {
 	onNavigate: (view: View) => void;
-	transactions: Transaction[];
+	transactions?: Transaction[];
 	currency: string;
 }
 
@@ -29,11 +30,13 @@ const CURRENCIES = [
 
 const Settings: React.FC<SettingsProps> = ({
 	onNavigate,
-	transactions,
+	transactions = [],
 	currency
 }) => {
 	const backupService = useLocalBackup();
 	const { isEnabled, backupTime, enableBackup, disableBackup, setBackupTime, performManualBackup, restoreFromBackup, hasDirectoryAccess, requestDirectoryAccess, directoryName, backupStatus, statusMessage, lastBackupTime, getMostRecentBackup, parseBackupFile } = backupService;
+
+	const { language, setLanguage, t } = useLanguage();
 
 	const [startDate, setStartDate] = useState('');
 	const timePickerRef = useRef<TimePickerHandle>(null);
@@ -57,28 +60,33 @@ const Settings: React.FC<SettingsProps> = ({
 	};
 
 	const formatLastBackup = (iso: string | null) => {
-		if (!iso) return 'Never';
+		if (!iso) return t('navigation.never');
 		const d = new Date(iso);
 		const now = new Date();
 		const diffMs = now.getTime() - d.getTime();
 		const diffMin = Math.floor(diffMs / 60000);
-		if (diffMin < 1) return 'Just now';
-		if (diffMin < 60) return `${diffMin}m ago`;
+		if (diffMin < 1) return language === 'bn' ? 'এইমাত্র' : 'Just now';
+		if (diffMin < 60) return language === 'bn' ? `${diffMin} মিনিট আগে` : `${diffMin}m ago`;
 		const diffHr = Math.floor(diffMin / 60);
-		if (diffHr < 24) return `${diffHr}h ago`;
-		return d.toLocaleDateString();
+		if (diffHr < 24) return language === 'bn' ? `${diffHr} ঘণ্টা আগে` : `${diffHr}h ago`;
+		return d.toLocaleDateString(language === 'bn' ? 'bn-BD' : 'en-US');
 	};
 
 	const getStatusConfig = () => {
 		switch (backupStatus) {
 			case 'syncing':
-				return { text: statusMessage || 'Backing up...', color: 'text-amber-500', icon: 'sync', spin: true };
+				return { text: statusMessage || t('settings.backup.status_syncing'), color: 'text-amber-500', icon: 'sync', spin: true };
 			case 'success':
-				return { text: statusMessage || 'Backup successful', color: 'text-green-500', icon: 'check_circle', spin: false };
+				return { text: statusMessage || t('settings.backup.status_success'), color: 'text-green-500', icon: 'check_circle', spin: false };
 			case 'error':
-				return { text: statusMessage || 'Backup failed', color: 'text-rose-500', icon: 'error', spin: false };
+				return { text: statusMessage || t('settings.backup.status_error'), color: 'text-rose-500', icon: 'error', spin: false };
 			default:
-				return { text: isEnabled ? 'Auto backup is on' : 'Auto backup is off', color: isEnabled ? 'text-green-500' : 'text-rose-400', icon: isEnabled ? 'folder_special' : 'folder_off', spin: false };
+				return { 
+					text: isEnabled ? t('settings.backup.status_enabled') : t('settings.backup.status_disabled'), 
+					color: isEnabled ? 'text-green-500' : 'text-stone-500', 
+					icon: isEnabled ? 'check_circle' : 'cancel', 
+					spin: false 
+				};
 		}
 	};
 
@@ -151,9 +159,9 @@ const Settings: React.FC<SettingsProps> = ({
 			let currentY = 34;
 
 			// --- Date range ---
-			let filteredTransactions = transactions;
+			let filteredTransactions = LocalRepository.getAllExpenses() as Transaction[];
 			if (startDate || endDate) {
-				filteredTransactions = transactions.filter(t => {
+				filteredTransactions = filteredTransactions.filter(t => {
 					const tDate = t.date;
 					const afterStart = !startDate || tDate >= startDate;
 					const beforeEnd = !endDate || tDate <= endDate;
@@ -166,7 +174,7 @@ const Settings: React.FC<SettingsProps> = ({
 			}
 
 			if (filteredTransactions.length === 0) {
-				alert('No transactions found in the specified range.');
+				alert(t('ledger.no_entries'));
 				return;
 			}
 
@@ -309,15 +317,15 @@ const Settings: React.FC<SettingsProps> = ({
 			}
 		} catch (error) {
 			console.error('PDF Export Error:', error);
-			alert('Failed to generate PDF. Please check console for details.');
+			alert(t('common.error'));
 		}
 	};
 
 	const handleExportCSV = async () => {
 		try {
-			let filteredTransactions = transactions;
+			let filteredTransactions = LocalRepository.getAllExpenses() as Transaction[];
 			if (startDate || endDate) {
-				filteredTransactions = transactions.filter(t => {
+				filteredTransactions = filteredTransactions.filter(t => {
 					const tDate = t.date;
 					const afterStart = !startDate || tDate >= startDate;
 					const beforeEnd = !endDate || tDate <= endDate;
@@ -326,7 +334,7 @@ const Settings: React.FC<SettingsProps> = ({
 			}
 
 			if (filteredTransactions.length === 0) {
-				alert('No transactions found to export.');
+				alert(t('ledger.no_entries'));
 				return;
 			}
 
@@ -459,9 +467,9 @@ const Settings: React.FC<SettingsProps> = ({
 			isOpen={showManual}
 			onClose={() => setShowManual(false)}
 			onConfirm={() => setShowManual(false)}
-			title="Backup Guidance"
-			message="Choose the right way to manage your data."
-			confirmLabel="Got it"
+			title={t('settings.backup.guidance_title')}
+			message={t('settings.backup.guidance_subtitle')}
+			confirmLabel={t('settings.backup.got_it')}
 			variant="primary"
 			extraContent={
 				<div className="space-y-4 mt-6 text-left">
@@ -472,9 +480,9 @@ const Settings: React.FC<SettingsProps> = ({
 								<span className="material-symbols-outlined">call_merge</span>
 							</div>
 							<div className="text-left">
-								<h4 className="font-bold text-stone-800 dark:text-stone-100 text-sm text-left">Merging Data</h4>
+								<h4 className="font-bold text-stone-800 dark:text-stone-100 text-sm text-left">{t('settings.backup.merge_title')}</h4>
 								<p className="text-xs text-stone-500 dark:text-stone-400 mt-1 leading-relaxed text-left">
-									Click <span className="font-bold text-emerald-600 dark:text-emerald-400">Restore</span> and select a file to combine backup data with your device data.
+									{t('settings.backup.merge_desc')}
 								</p>
 							</div>
 						</div>
@@ -487,9 +495,9 @@ const Settings: React.FC<SettingsProps> = ({
 								<span className="material-symbols-outlined">swap_horiz</span>
 							</div>
 							<div className="text-left">
-								<h4 className="font-bold text-stone-800 dark:text-stone-100 text-sm text-left">Overwriting Data</h4>
+								<h4 className="font-bold text-stone-800 dark:text-stone-100 text-sm text-left">{t('settings.backup.overwrite_title')}</h4>
 								<p className="text-xs text-stone-500 dark:text-stone-400 mt-1 leading-relaxed text-left">
-									Enabling auto-backup overwrites today's file. To avoid data loss, <span className="font-bold text-amber-600 dark:text-amber-400">move/rename</span> the existing file first, then use <span className="font-bold text-amber-600 dark:text-amber-400">Restore</span> to merge it later if needed.
+									{t('settings.backup.overwrite_desc')}
 								</p>
 							</div>
 						</div>
@@ -500,16 +508,16 @@ const Settings: React.FC<SettingsProps> = ({
 	);
 
 	const MergedResultsModal = () => {
-		const symbol = CURRENCIES.find(c => c.code === currency)?.symbol || '$';
+		const symbol = t('common.bdt_symbol');
 
 		return (
 			<ConfirmModal
 				isOpen={showMergedModal}
 				onClose={() => { setShowMergedModal(false); window.dispatchEvent(new Event('costpilot-settings-updated')); }}
 				onConfirm={() => { setShowMergedModal(false); window.dispatchEvent(new Event('costpilot-settings-updated')); }}
-				title="Sync Complete"
-				message={`Found ${mergedEntries.length} new items in your backup.`}
-				confirmLabel="Done"
+				title={t('settings.backup.sync_complete')}
+				message={t('settings.backup.found_new_items', { count: mergedEntries.length })}
+				confirmLabel={t('settings.backup.got_it')}
 				variant="primary"
 				extraContent={
 					<div className="max-h-96 overflow-y-auto space-y-2 mt-6 px-1 custom-scrollbar">
@@ -523,9 +531,9 @@ const Settings: React.FC<SettingsProps> = ({
 									<span className="material-symbols-outlined text-2xl">{t.type === 'income' ? 'trending_up' : 'payments'}</span>
 								</div>
 								<div className="flex-1 text-left min-w-0">
-									<p className="font-bold text-stone-900 dark:text-white truncate tracking-tight">{t.title || 'Untitled'}</p>
+									<p className="font-bold text-stone-900 dark:text-white truncate tracking-tight">{t.title || t('settings.backup.untitled')}</p>
 									<div className="flex flex-col mt-0.5">
-										<span className={`text-[10px] font-extrabold uppercase tracking-widest leading-none ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-500 dark:text-stone-400'}`}>{t.type}</span>
+										<span className={`text-[10px] font-extrabold uppercase tracking-widest leading-none ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-500 dark:text-stone-400'}`}>{t.type === 'income' ? t('common.income') : t('common.expense')}</span>
 										<span className="text-[9px] font-medium text-stone-400 dark:text-stone-500 uppercase tracking-wider leading-none mt-1">
 											{formatDate(t.date)}
 										</span>
@@ -541,7 +549,7 @@ const Settings: React.FC<SettingsProps> = ({
 								<div className="size-16 bg-stone-50 dark:bg-stone-800/50 rounded-full flex items-center justify-center mx-auto mb-4">
 									<span className="material-symbols-outlined text-stone-300 text-3xl">cloud_done</span>
 								</div>
-								<p className="text-stone-400 text-sm font-medium">All items were already synced!</p>
+								<p className="text-stone-400 text-sm font-medium">{t('settings.backup.all_synced')}</p>
 							</div>
 						)}
 					</div>
@@ -555,8 +563,8 @@ const Settings: React.FC<SettingsProps> = ({
 		<div className="max-w-4xl mx-auto space-y-6 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-500">
 			<div className="flex items-center justify-between px-1">
 				<div>
-					<h2 className="text-2xl font-bold font-brand-title brand-gradient">Settings</h2>
-					<p className="text-stone-400 text-xs">Manage your preferences and data.</p>
+					<h2 className="text-2xl font-bold font-brand-title brand-gradient">{t('settings.title')}</h2>
+					<p className="text-stone-400 text-xs">{t('settings.subtitle')}</p>
 				</div>
 			</div>
 
@@ -570,8 +578,8 @@ const Settings: React.FC<SettingsProps> = ({
 								<span className="material-symbols-outlined">{isDark ? 'dark_mode' : 'light_mode'}</span>
 							</div>
 							<div>
-								<h3 className="font-bold text-stone-900 dark:text-white text-sm">App Appearance</h3>
-								<p className="text-stone-400 text-[11px] mt-0.5">Switch between dark mode and light mode.</p>
+								<h3 className="font-bold text-stone-900 dark:text-white text-sm">{t('settings.appearance.title')}</h3>
+								<p className="text-stone-400 text-[11px] mt-0.5">{t('settings.appearance.desc')}</p>
 							</div>
 						</div>
 						
@@ -582,23 +590,52 @@ const Settings: React.FC<SettingsProps> = ({
 							<span className="material-symbols-outlined text-lg animate-pulse">
 								{isDark ? 'light_mode' : 'dark_mode'}
 							</span>
-							<span>Switch to {isDark ? 'Light' : 'Dark'} Mode</span>
+							<span>{isDark ? t('settings.appearance.btn_light') : t('settings.appearance.btn_dark')}</span>
 						</button>
+					</div>
+				</div>
+
+				{/* Language Selector Card */}
+				<div className="card-section p-5 relative group border border-[#AF8F42]/30 dark:border-[#AF8F42]/40 bg-gradient-to-r from-stone-50 to-white dark:from-stone-900/50 dark:to-stone-900/20">
+					<div className="absolute inset-0 rounded-xl overflow-hidden pointer-events-none">
+						<div className="absolute -top-10 -right-10 size-32 bg-gradient-to-br from-[#AF8F42] to-[#D4AF37] opacity-15 rounded-full blur-2xl group-hover:opacity-25 transition-opacity duration-700"></div>
+					</div>
+					<div className="flex flex-col sm:flex-row items-center justify-between gap-4 relative z-10">
+						<div className="flex items-center gap-3 text-left w-full sm:w-auto">
+							<div className="size-10 rounded-xl bg-[#AF8F42]/10 flex items-center justify-center text-[#AF8F42] shrink-0">
+								<span className="material-symbols-outlined">translate</span>
+							</div>
+							<div>
+								<h3 className="font-bold text-stone-900 dark:text-white text-sm">{t('settings.language.title')}</h3>
+								<p className="text-stone-400 text-[11px] mt-0.5">{t('settings.language.desc')}</p>
+							</div>
+						</div>
+						
+						<div className="w-full sm:w-48 shrink-0">
+							<Dropdown
+								value={language}
+								onChange={(val) => setLanguage(val as any)}
+								options={[
+									{ id: 'bn', name: t('settings.language.bn'), icon: 'translate' },
+									{ id: 'en', name: t('settings.language.en'), icon: 'translate' }
+								]}
+							/>
+						</div>
 					</div>
 				</div>
 
 				{/* Data Exports */}
 				<div className="card-section p-4 space-y-4 md:col-span-2">
 					<div>
-						<p className="text-xs font-bold text-stone-500 uppercase tracking-widest mb-1">Data Management</p>
+						<p className="text-xs font-bold text-stone-500 uppercase tracking-widest mb-1">{t('settings.data_management.title')}</p>
 						<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
 							<DatePicker
-								label="Start Date"
+								label={t('settings.data_management.start_date')}
 								value={startDate}
 								onChange={setStartDate}
 							/>
 							<DatePicker
-								label="End Date"
+								label={t('settings.data_management.end_date')}
 								value={endDate}
 								onChange={setEndDate}
 							/>
@@ -607,11 +644,11 @@ const Settings: React.FC<SettingsProps> = ({
 					<div className="flex gap-2">
 						<button onClick={handleExportPDF} className="btn-secondary flex-1 text-xs py-2 flex items-center justify-center gap-2">
 							<span className="material-symbols-outlined text-sm">picture_as_pdf</span>
-							PDF
+							{t('settings.data_management.pdf_btn')}
 						</button>
 						<button onClick={handleExportCSV} className="btn-secondary flex-1 text-xs py-2 flex items-center justify-center gap-2">
 							<span className="material-symbols-outlined text-sm">description</span>
-							CSV
+							{t('settings.data_management.csv_btn')}
 						</button>
 					</div>
 				</div>
@@ -626,15 +663,15 @@ const Settings: React.FC<SettingsProps> = ({
 							{statusConfig.icon}
 						</span>
 						<div>
-							<h3 className="text-base sm:text-xl font-bold">Rolling Local Backup</h3>
-							<p className="text-stone-400 text-xs mt-1">Daily backups, 30 days retention.</p>
+							<h3 className="text-base sm:text-xl font-bold">{t('settings.backup.title')}</h3>
+							<p className="text-stone-400 text-xs mt-1">{t('settings.backup.desc')}</p>
 						</div>
 					</div>
 
 					{!Capacitor.isNativePlatform() && !(window as any).showDirectoryPicker && (
 						<div className="mb-4 bg-amber-500/10 border border-amber-500/30 text-amber-500 text-xs p-3 rounded-xl">
 							<span className="material-symbols-outlined text-sm inline-block align-text-bottom mr-1">warning</span>
-							Scheduled auto-backup is only supported in Chromium browsers (Chrome, Edge). On this browser, you must backup manually.
+							{t('settings.backup.warning_browser')}
 						</div>
 					)}
 
@@ -642,13 +679,13 @@ const Settings: React.FC<SettingsProps> = ({
 						<span className={`${statusConfig.color} font-bold text-sm`}>{statusConfig.text}</span>
 						<div className="flex items-center gap-3">
 							{isEnabled && lastBackupTime && backupStatus !== 'syncing' && (
-								<span className="text-stone-400 text-xs truncate">Last: {formatLastBackup(lastBackupTime)}</span>
+								<span className="text-stone-400 text-xs truncate">{t('settings.backup.last_backup_format', { time: formatLastBackup(lastBackupTime) })}</span>
 							)}
 							<button
 								onClick={handleToggleBackup}
 								className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors duration-300 focus:outline-none ${isEnabled ? 'bg-[#AF8F42]' : 'bg-stone-600'
 									}`}
-								title={isEnabled ? 'Disable auto backup' : 'Enable auto backup'}
+								title={isEnabled ? t('settings.backup.status_enabled') : t('settings.backup.status_disabled')}
 							>
 								<span
 									className={`inline-block size-5 transform rounded-full bg-white shadow-lg transition-transform duration-300 ${isEnabled ? 'translate-x-6' : 'translate-x-1'
@@ -664,15 +701,15 @@ const Settings: React.FC<SettingsProps> = ({
 								<button
 									onClick={onLocationClick}
 									className="flex items-center gap-2.5 bg-stone-800/80 rounded-lg p-2.5 border border-stone-700 min-w-0 text-left"
-									title="Change Backup Location"
+									title={t('settings.backup.change_location')}
 								>
 									<div className="p-1.5 bg-stone-700 rounded-md text-stone-300 flex items-center justify-center shrink-0">
 										<span className="material-symbols-outlined text-lg">folder_open</span>
 									</div>
 									<div className="flex flex-col min-w-0 flex-1">
-										<span className="text-[10px] uppercase text-stone-500 font-bold tracking-widest leading-none">Location</span>
+										<span className="text-[10px] uppercase text-stone-500 font-bold tracking-widest leading-none">{t('settings.backup.change_location')}</span>
 										<span className="text-xs text-stone-300 truncate font-mono mt-0.5">
-											{directoryName || 'Not set'}
+											{directoryName || t('settings.backup.not_set')}
 										</span>
 									</div>
 								</button>
@@ -681,13 +718,13 @@ const Settings: React.FC<SettingsProps> = ({
 									onClick={() => timePickerRef.current?.open()}
 									className="flex items-center gap-2.5 bg-stone-800/80 rounded-lg p-2.5 border border-stone-700 min-w-0 text-left cursor-pointer"
 									role="button"
-									title="Change Backup Time"
+									title={t('settings.backup.change_time')}
 								>
 									<div className="p-1.5 bg-stone-700 rounded-md text-stone-300 flex items-center justify-center shrink-0">
 										<span className="material-symbols-outlined text-lg">schedule</span>
 									</div>
 									<div className="flex flex-col min-w-0 flex-1">
-										<span className="text-[10px] uppercase text-stone-500 font-bold tracking-widest leading-none">Time</span>
+										<span className="text-[10px] uppercase text-stone-500 font-bold tracking-widest leading-none">{t('settings.backup.change_time')}</span>
 										<div className="mt-0.5">
 											<TimePicker
 												ref={timePickerRef}
@@ -702,12 +739,12 @@ const Settings: React.FC<SettingsProps> = ({
 							<div className="grid grid-cols-2 gap-2">
 								<button
 									onClick={performManualBackup}
-									disabled={backupStatus === 'syncing' || !hasDirectoryAccess || transactions.length === 0}
+									disabled={backupStatus === 'syncing' || !hasDirectoryAccess || LocalRepository.getAllExpenses().length === 0}
 									className="bg-[#AF8F42] hover:bg-[#917536] disabled:bg-[#AF8F42]/50 text-white py-2.5 rounded-lg font-bold text-xs transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow-sm disabled:cursor-not-allowed"
-									title={transactions.length === 0 ? "No data to backup" : ""}
+									title={LocalRepository.getAllExpenses().length === 0 ? "No data to backup" : ""}
 								>
 									<span className="material-symbols-outlined text-sm">save</span>
-									Backup
+									{t('settings.backup.btn_backup')}
 								</button>
 
 								<button
@@ -715,7 +752,7 @@ const Settings: React.FC<SettingsProps> = ({
 									className="bg-white/10 hover:bg-white/20 text-white py-2.5 rounded-lg font-bold text-xs transition-all active:scale-95 flex items-center justify-center gap-1.5"
 								>
 									<span className="material-symbols-outlined text-sm">restore</span>
-									Restore
+									{t('settings.backup.btn_restore')}
 								</button>
 							</div>
 						</div>
@@ -735,17 +772,17 @@ const Settings: React.FC<SettingsProps> = ({
 					setShowOverwriteConfirm(false);
 					setBackupMetadata(null);
 				}}
-				title="Today's Backup Will Be Overwritten"
-				message={`A backup from today already exists in this folder. Enabling auto-backup will overwrite it with your current device data.`}
-				confirmLabel="Overwrite & Enable"
-				cancelLabel="Cancel"
+				title={t('settings.backup.overwrite_title')}
+				message={t('settings.backup.overwrite_desc')}
+				confirmLabel={t('settings.backup.overwrite_btn')}
+				cancelLabel={t('common.cancel')}
 				variant="danger"
 				extraContent={
 					<button 
 						onClick={(e) => { e.stopPropagation(); setShowManual(true); }}
 						className="text-xs font-bold text-rose-600 hover:underline"
 					>
-						How to merge or avoid overwriting?
+						{t('settings.backup.guidance_how_overwrite')}
 					</button>
 				}
 			/>
@@ -768,17 +805,17 @@ const Settings: React.FC<SettingsProps> = ({
 					setShowRestoreConfirm(false);
 					setRecentBackupFile(null);
 				}}
-				title="Existing Backup Found"
-				message="We found an existing CostPilot backup file. To combine its contents with your current data, choose 'Merge & Restore'. This will not overwrite your local updates."
-				confirmLabel="Merge & Restore"
-				cancelLabel="Not Now"
+				title={t('settings.backup.existing_backup_title')}
+				message={t('settings.backup.existing_backup_desc')}
+				confirmLabel={t('settings.backup.existing_backup_confirm')}
+				cancelLabel={t('settings.backup.existing_backup_cancel')}
 				variant="primary"
 				extraContent={
 					<button 
 						onClick={(e) => { e.stopPropagation(); setShowManual(true); }}
 						className="text-xs font-bold text-primary-600 hover:underline"
 					>
-						How backup merging works?
+						{t('settings.backup.guidance_how_merging')}
 					</button>
 				}
 			/>

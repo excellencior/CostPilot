@@ -74,13 +74,28 @@ class LocalBackupService {
             }
             if (this.dirHandle) {
                 const permission = await this.dirHandle.queryPermission({ mode: 'readwrite' });
-                if (permission === 'granted') return true;
-                const request = await this.dirHandle.requestPermission({ mode: 'readwrite' });
-                return request === 'granted';
+                return permission === 'granted';
             }
             return false;
         } catch (e) {
             console.error('Error checking directory access:', e);
+            return false;
+        }
+    }
+
+    async requestPersistedPermission(): Promise<boolean> {
+        if (Capacitor.isNativePlatform()) return true;
+        try {
+            if (!this.dirHandle) {
+                this.dirHandle = await this.loadHandle();
+            }
+            if (this.dirHandle) {
+                const permission = await this.dirHandle.requestPermission({ mode: 'readwrite' });
+                return permission === 'granted';
+            }
+            return false;
+        } catch (e) {
+            console.error('Error requesting persisted permission:', e);
             return false;
         }
     }
@@ -104,13 +119,18 @@ class LocalBackupService {
         return this.dirHandle?.name || null;
     }
 
-    private getMonthDir(): string {
-        const now = new Date();
-        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    private getMonthDir(now: Date = new Date()): string {
+        const monthNames = [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ];
+        const monthName = monthNames[now.getMonth()];
+        const yearYY = String(now.getFullYear()).substring(2);
+        return `${monthName}-${yearYY}`;
     }
 
-    private async ensureNativeDir(): Promise<void> {
-        const monthPath = `${NATIVE_BACKUP_DIR}/${this.getMonthDir()}`;
+    private async ensureNativeDir(targetDate: Date = new Date()): Promise<void> {
+        const monthPath = `${NATIVE_BACKUP_DIR}/${this.getMonthDir(targetDate)}`;
         try {
             await Filesystem.readdir({ path: monthPath, directory: Directory.Documents });
         } catch {
@@ -118,34 +138,38 @@ class LocalBackupService {
         }
     }
 
-    private generateFileName(): string {
-        const date = new Date().toISOString().split('T')[0];
+    private generateFileName(targetDate: Date = new Date()): string {
+        const date = targetDate.toISOString().split('T')[0];
         return `costpilot_backup_${date}.json`;
     }
 
-    private generateNativePath(): string {
-        return `${NATIVE_BACKUP_DIR}/${this.getMonthDir()}/${this.generateFileName()}`;
+    private generateNativePath(targetDate: Date = new Date()): string {
+        return `${NATIVE_BACKUP_DIR}/${this.getMonthDir(targetDate)}/${this.generateFileName(targetDate)}`;
     }
 
-    private buildPayload(): BackupPayload {
+    private buildPayload(targetDate: Date = new Date()): BackupPayload {
+        const monthPrefix = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
+        const allExpenses = Object.values(LocalRepository.getRawExpenses());
+        const monthExpenses = allExpenses.filter(e => e.date && e.date.startsWith(monthPrefix));
+
         return {
             version: 1,
-            timestamp: new Date().toISOString(),
+            timestamp: targetDate.toISOString(),
             settings: LocalRepository.getSettings(),
             categories: LocalRepository.getAllCategories(),
-            transactions: LocalRepository.getAllExpenses()
+            transactions: monthExpenses
         };
     }
 
-    async createBackup(): Promise<string> {
-        const payload = this.buildPayload();
+    async createBackup(targetDate: Date = new Date()): Promise<string> {
+        const payload = this.buildPayload(targetDate);
         const jsonString = JSON.stringify(payload, null, 2);
-        const fileName = this.generateFileName();
+        const fileName = this.generateFileName(targetDate);
 
         if (Capacitor.isNativePlatform()) {
-            await this.ensureNativeDir();
+            await this.ensureNativeDir(targetDate);
             await Filesystem.writeFile({
-                path: this.generateNativePath(),
+                path: this.generateNativePath(targetDate),
                 data: jsonString,
                 directory: Directory.Documents,
                 encoding: Encoding.UTF8
@@ -154,20 +178,22 @@ class LocalBackupService {
             if (!await this.hasAccess()) {
                 throw new Error('No directory access');
             }
-            const fileHandle = await this.dirHandle!.getFileHandle(fileName, { create: true });
+            const monthDirName = this.getMonthDir(targetDate);
+            const monthDirHandle = await this.dirHandle!.getDirectoryHandle(monthDirName, { create: true });
+            const fileHandle = await monthDirHandle.getFileHandle(fileName, { create: true });
             const writable = await fileHandle.createWritable();
             await writable.write(jsonString);
             await writable.close();
         }
 
         await this.pruneOldBackups();
-        const currentHash = await this.getCurrentDataHash();
+        const currentHash = await this.getCurrentDataHash(targetDate);
         LocalRepository.updateSettings({ lastBackupDate: payload.timestamp, lastBackupHash: currentHash });
         return fileName;
     }
 
-    async getCurrentDataHash(): Promise<string> {
-        const payload = this.buildPayload();
+    async getCurrentDataHash(targetDate: Date = new Date()): Promise<string> {
+        const payload = this.buildPayload(targetDate);
         const objToHash = {
             categories: payload.categories,
             transactions: payload.transactions,
@@ -183,6 +209,73 @@ class LocalBackupService {
         return hash.toString(36);
     }
 
+    async checkAndCreateMissingFinalBackups(): Promise<void> {
+        if (!Capacitor.isNativePlatform()) {
+            if (!this.dirHandle) {
+                this.dirHandle = await this.loadHandle();
+            }
+            if (!this.dirHandle) return;
+            const permission = await this.dirHandle.queryPermission({ mode: 'readwrite' });
+            if (permission !== 'granted') return;
+        }
+
+        const now = new Date();
+        const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+        const monthKeys = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('costpilot_local_db_') && !key.endsWith('_migrated')) {
+                const parts = key.split('_');
+                const yyyymm = parts[parts.length - 1]; // e.g. "2026-03"
+                if (yyyymm && yyyymm < currentMonthKey) {
+                    monthKeys.push(yyyymm);
+                }
+            }
+        }
+
+        for (const yyyymm of monthKeys) {
+            const [yearStr, monthStr] = yyyymm.split('-');
+            const year = parseInt(yearStr);
+            const month = parseInt(monthStr);
+
+            // Calculate last day of this month
+            const lastDay = new Date(year, month, 0).getDate();
+            const targetDate = new Date(year, month - 1, lastDay, 23, 59, 0);
+
+            const fileName = this.generateFileName(targetDate);
+            const monthDirName = this.getMonthDir(targetDate);
+            let exists = false;
+
+            if (Capacitor.isNativePlatform()) {
+                const path = `${NATIVE_BACKUP_DIR}/${monthDirName}/${fileName}`;
+                try {
+                    await Filesystem.stat({ path, directory: Directory.Documents });
+                    exists = true;
+                } catch {
+                    exists = false;
+                }
+            } else {
+                try {
+                    const monthDirHandle = await this.dirHandle!.getDirectoryHandle(monthDirName, { create: false });
+                    await monthDirHandle.getFileHandle(fileName, { create: false });
+                    exists = true;
+                } catch {
+                    exists = false;
+                }
+            }
+
+            if (!exists) {
+                console.log(`Creating missing final backup for past month ${monthDirName}...`);
+                try {
+                    await this.createBackup(targetDate);
+                } catch (e) {
+                    console.error(`Failed to create retrospective backup for ${monthDirName}:`, e);
+                }
+            }
+        }
+    }
+
     async restoreBackup(file: File): Promise<{ newTransactions: any[], newCategoriesCount: number }> {
         try {
             const payload = await this.parseBackupFile(file);
@@ -191,28 +284,39 @@ class LocalBackupService {
                 throw new Error("Invalid backup file format");
             }
 
-            // PRESERVE all current user settings (currency, theme, etc.)
-            // Restore should only merge data (transactions + categories), never overwrite preferences
-
-            // Merge transactions (stored as map/object in costpilot_local_db)
-            const currentData = JSON.parse(localStorage.getItem('costpilot_local_db') || '{}');
-            const backupTransactions = payload.transactions;
-            
+            // Merge transactions (grouped by month and saved to their respective keys)
+            const backupTransactions = payload.transactions || [];
             const addedTransactions: any[] = [];
+            const transactionsByMonth: Record<string, any[]> = {};
 
             backupTransactions.forEach((t: any) => {
-                const existing = currentData[t.id];
-                if (!existing) {
-                    currentData[t.id] = t;
-                    addedTransactions.push(t);
-                } else if (existing.deleted && !t.deleted) {
-                    // Revive deleted item if it's active in the backup
-                    currentData[t.id] = { ...t, deleted: false };
-                    addedTransactions.push(currentData[t.id]);
+                if (t && t.date) {
+                    const monthKey = t.date.substring(0, 7);
+                    if (!transactionsByMonth[monthKey]) {
+                        transactionsByMonth[monthKey] = [];
+                    }
+                    transactionsByMonth[monthKey].push(t);
                 }
             });
 
-            localStorage.setItem('costpilot_local_db', JSON.stringify(currentData));
+            Object.entries(transactionsByMonth).forEach(([monthKey, tList]) => {
+                const storageKey = `costpilot_local_db_${monthKey}`;
+                const currentData = JSON.parse(localStorage.getItem(storageKey) || '{}');
+
+                tList.forEach((t: any) => {
+                    const existing = currentData[t.id];
+                    if (!existing) {
+                        currentData[t.id] = t;
+                        addedTransactions.push(t);
+                    } else if (existing.deleted && !t.deleted) {
+                        // Revive deleted item if it's active in the backup
+                        currentData[t.id] = { ...t, deleted: false };
+                        addedTransactions.push(currentData[t.id]);
+                    }
+                });
+
+                localStorage.setItem(storageKey, JSON.stringify(currentData));
+            });
 
             // Merge categories (stored as map/object in costpilot_local_categories)
             const currentCatData = JSON.parse(localStorage.getItem('costpilot_local_categories') || '{}');
@@ -264,65 +368,8 @@ class LocalBackupService {
     }
 
     async pruneOldBackups(retentionDays = 30): Promise<void> {
-        const now = new Date();
-        const cutoff = new Date(now.getTime() - (retentionDays * 24 * 60 * 60 * 1000));
-
-        try {
-            if (Capacitor.isNativePlatform()) {
-                // Scan all month subdirectories under CostPilot/
-                const topLevel = await Filesystem.readdir({
-                    path: NATIVE_BACKUP_DIR,
-                    directory: Directory.Documents
-                });
-
-                for (const monthEntry of topLevel.files) {
-                    // Each entry should be a month directory like 2026-03
-                    if (monthEntry.type === 'directory') {
-                        const monthPath = `${NATIVE_BACKUP_DIR}/${monthEntry.name}`;
-                        const monthFiles = await Filesystem.readdir({
-                            path: monthPath,
-                            directory: Directory.Documents
-                        });
-
-                        for (const file of monthFiles.files) {
-                            if (file.name.startsWith('costpilot_backup_') && file.name.endsWith('.json')) {
-                                const dateStr = file.name.replace('costpilot_backup_', '').replace('.json', '');
-                                const fileDate = new Date(dateStr);
-                                if (fileDate < cutoff) {
-                                    await Filesystem.deleteFile({
-                                        path: `${monthPath}/${file.name}`,
-                                        directory: Directory.Documents
-                                    });
-                                }
-                            }
-                        }
-
-                        // Remove empty month directories
-                        const remaining = await Filesystem.readdir({ path: monthPath, directory: Directory.Documents });
-                        if (remaining.files.length === 0) {
-                            await Filesystem.rmdir({ path: monthPath, directory: Directory.Documents });
-                        }
-                    }
-                }
-            } else {
-                if (!await this.hasAccess()) return;
-
-                const valuesContext: any = this.dirHandle!.values();
-                for await (const entry of valuesContext) {
-                    if (entry.kind === 'file' && entry.name.startsWith('costpilot_backup_') && entry.name.endsWith('.json')) {
-                        const dateStr = entry.name.replace('costpilot_backup_', '').replace('.json', '');
-                        const fileDate = new Date(dateStr);
-                        // Using Date to implicitly handle valid parsed dates
-                        if (!isNaN(fileDate.getTime()) && fileDate < cutoff) {
-                            // Using standard File System API to remove entry
-                            await this.dirHandle!.removeEntry(entry.name);
-                        }
-                    }
-                }
-            }
-        } catch (e) {
-            console.error('Error pruning backups:', e);
-        }
+        // Keep all backup files as requested: make this a no-op
+        return;
     }
 
     async getMostRecentBackup(): Promise<File | null> {
@@ -361,7 +408,6 @@ class LocalBackupService {
                 }
 
                 if (latestFilePath && latestFileName) {
-                    // We need a File object for the restore function. On native, we can read the string and mock a File
                     const contentRes = await Filesystem.readFile({
                         path: latestFilePath,
                         directory: Directory.Documents,
@@ -377,14 +423,19 @@ class LocalBackupService {
                 let latestFileHandle: FileSystemFileHandle | null = null;
                 let latestDate = 0;
 
-                const valuesContext: any = this.dirHandle!.values();
-                for await (const entry of valuesContext) {
-                    if (entry.kind === 'file' && entry.name.startsWith('costpilot_backup_') && entry.name.endsWith('.json')) {
-                        const dateStr = entry.name.replace('costpilot_backup_', '').replace('.json', '');
-                        const fileDate = new Date(dateStr).getTime();
-                        if (!isNaN(fileDate) && fileDate > latestDate) {
-                            latestDate = fileDate;
-                            latestFileHandle = entry as FileSystemFileHandle;
+                // Scan subdirectories on Web
+                for await (const entry of this.dirHandle!.values()) {
+                    if (entry.kind === 'directory') {
+                        const subDirHandle = entry as FileSystemDirectoryHandle;
+                        for await (const subEntry of subDirHandle.values()) {
+                            if (subEntry.kind === 'file' && subEntry.name.startsWith('costpilot_backup_') && subEntry.name.endsWith('.json')) {
+                                const dateStr = subEntry.name.replace('costpilot_backup_', '').replace('.json', '');
+                                const fileDate = new Date(dateStr).getTime();
+                                if (!isNaN(fileDate) && fileDate > latestDate) {
+                                    latestDate = fileDate;
+                                    latestFileHandle = subEntry as FileSystemFileHandle;
+                                }
+                            }
                         }
                     }
                 }
@@ -398,6 +449,141 @@ class LocalBackupService {
             console.error('Error finding recent backup:', e);
             return null;
         }
+    }
+
+    getMonthDirFromKey(monthKey: string): string {
+        const [yearStr, monthStr] = monthKey.split('-');
+        const monthNames = [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ];
+        const monthIndex = parseInt(monthStr, 10) - 1;
+        const monthName = monthNames[monthIndex] || 'January';
+        const yearYY = yearStr.substring(2);
+        return `${monthName}-${yearYY}`;
+    }
+
+    async getBackupTransactionsForMonth(monthKey: string): Promise<any[] | null> {
+        try {
+            const monthDir = this.getMonthDirFromKey(monthKey);
+            if (Capacitor.isNativePlatform()) {
+                const monthPath = `${NATIVE_BACKUP_DIR}/${monthDir}`;
+                const monthFiles = await Filesystem.readdir({
+                    path: monthPath,
+                    directory: Directory.Documents
+                });
+
+                let latestFileName: string | null = null;
+                let latestDate = 0;
+
+                for (const file of monthFiles.files) {
+                    if (file.name.startsWith('costpilot_backup_') && file.name.endsWith('.json')) {
+                        const dateStr = file.name.replace('costpilot_backup_', '').replace('.json', '');
+                        const fileDate = new Date(dateStr).getTime();
+                        if (!isNaN(fileDate) && fileDate > latestDate) {
+                            latestDate = fileDate;
+                            latestFileName = file.name;
+                        }
+                    }
+                }
+
+                if (latestFileName) {
+                    const contentRes = await Filesystem.readFile({
+                        path: `${monthPath}/${latestFileName}`,
+                        directory: Directory.Documents,
+                        encoding: Encoding.UTF8
+                    });
+                    const payload = JSON.parse(contentRes.data as string);
+                    return payload.transactions || [];
+                }
+                return null;
+            } else {
+                if (!await this.hasAccess()) return null;
+
+                try {
+                    const subDirHandle = await this.dirHandle!.getDirectoryHandle(monthDir, { create: false });
+                    let latestFileHandle: FileSystemFileHandle | null = null;
+                    let latestDate = 0;
+
+                    for await (const entry of subDirHandle.values()) {
+                        if (entry.kind === 'file' && entry.name.startsWith('costpilot_backup_') && entry.name.endsWith('.json')) {
+                            const dateStr = entry.name.replace('costpilot_backup_', '').replace('.json', '');
+                            const fileDate = new Date(dateStr).getTime();
+                            if (!isNaN(fileDate) && fileDate > latestDate) {
+                                latestDate = fileDate;
+                                latestFileHandle = entry as FileSystemFileHandle;
+                            }
+                        }
+                    }
+
+                    if (latestFileHandle) {
+                        const file = await latestFileHandle.getFile();
+                        const text = await file.text();
+                        const payload = JSON.parse(text);
+                        return payload.transactions || [];
+                    }
+                } catch {
+                    return null;
+                }
+                return null;
+            }
+        } catch (e) {
+            console.error(`Error loading backup transactions for ${monthKey}:`, e);
+            return null;
+        }
+    }
+
+    async getAvailableBackupMonths(): Promise<{ monthKey: string; year: number; month: number }[]> {
+        const results: { monthKey: string; year: number; month: number }[] = [];
+        try {
+            const monthNames = [
+                "January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"
+            ];
+            if (Capacitor.isNativePlatform()) {
+                const topLevel = await Filesystem.readdir({
+                    path: NATIVE_BACKUP_DIR,
+                    directory: Directory.Documents
+                });
+
+                for (const entry of topLevel.files) {
+                    if (entry.type === 'directory') {
+                        const parts = entry.name.split('-');
+                        if (parts.length === 2) {
+                            const [mName, yYY] = parts;
+                            const mIndex = monthNames.indexOf(mName);
+                            if (mIndex !== -1) {
+                                const year = 2000 + parseInt(yYY, 10);
+                                const month = mIndex + 1;
+                                const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+                                results.push({ monthKey, year, month });
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (!await this.hasAccess()) return [];
+
+                for await (const entry of this.dirHandle!.values()) {
+                    if (entry.kind === 'directory') {
+                        const parts = entry.name.split('-');
+                        if (parts.length === 2) {
+                            const [mName, yYY] = parts;
+                            const mIndex = monthNames.indexOf(mName);
+                            if (mIndex !== -1) {
+                                const year = 2000 + parseInt(yYY, 10);
+                                const month = mIndex + 1;
+                                const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+                                results.push({ monthKey, year, month });
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Error scanning backup directory for months:', e);
+        }
+        return results;
     }
 }
 

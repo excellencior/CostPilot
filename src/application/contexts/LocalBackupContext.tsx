@@ -22,6 +22,9 @@ interface LocalBackupContextType {
     getDirectoryName: () => string | null;
     getMostRecentBackup: () => Promise<File | null>;
     parseBackupFile: (file: File) => Promise<any>;
+    getBackupTransactionsForMonth: (monthKey: string) => Promise<any[] | null>;
+    getAvailableBackupMonths: () => Promise<{ monthKey: string; year: number; month: number }[]>;
+    requestPersistedPermission: () => Promise<boolean>;
 }
 
 const LocalBackupContext = createContext<LocalBackupContextType | undefined>(undefined);
@@ -46,6 +49,11 @@ export const LocalBackupProvider: React.FC<{ children: ReactNode }> = ({ childre
         localBackupService.hasAccess().then(hasAccess => {
             setHasDirectoryAccess(hasAccess);
             setDirectoryName(localBackupService.getDirectoryName());
+            if (hasAccess && settings.autoBackupEnabled) {
+                localBackupService.checkAndCreateMissingFinalBackups().catch(err => {
+                    console.error('Failed to create missing final backups on start:', err);
+                });
+            }
         });
     }, []);
 
@@ -53,6 +61,9 @@ export const LocalBackupProvider: React.FC<{ children: ReactNode }> = ({ childre
         setIsEnabled(true);
         LocalRepository.updateSettings({ autoBackupEnabled: true });
         toast.success('Auto backup enabled');
+        localBackupService.checkAndCreateMissingFinalBackups().catch(err => {
+            console.error('Failed to create missing final backups on enable:', err);
+        });
     };
 
     const disableBackup = () => {
@@ -73,25 +84,36 @@ export const LocalBackupProvider: React.FC<{ children: ReactNode }> = ({ childre
         if (granted) {
             setDirectoryName(localBackupService.getDirectoryName());
             toast.success('Backup location saved');
+            const settings = LocalRepository.getSettings();
+            if (settings.autoBackupEnabled) {
+                localBackupService.checkAndCreateMissingFinalBackups().catch(err => {
+                    console.error('Failed to create missing final backups on directory grant:', err);
+                });
+            }
         } else {
             toast.error('Failed to access location');
         }
         return granted;
     };
 
-    const performManualBackup = useCallback(async () => {
-        if (!await localBackupService.hasAccess()) {
+    const performManualBackup = useCallback(async (force = false) => {
+        let hasAccess = await localBackupService.hasAccess();
+        if (!hasAccess) {
+            hasAccess = await localBackupService.requestPersistedPermission();
+            setHasDirectoryAccess(hasAccess);
+        }
+
+        if (!hasAccess) {
             toast.error('Please select a backup location first');
             return;
         }
 
         // Check if a backup is actually needed
         const settings = LocalRepository.getSettings();
-        const rawExpenses = localStorage.getItem('costpilot_local_db');
+        const expenses = LocalRepository.getRawExpenses();
         const rawCategories = localStorage.getItem('costpilot_local_categories');
-        const expenses = rawExpenses ? JSON.parse(rawExpenses) : {};
         const categoriesArray = rawCategories ? Object.values(JSON.parse(rawCategories)) : [];
-        const expensesArray = rawExpenses ? Object.values(JSON.parse(rawExpenses)) : [];
+        const expensesArray = Object.values(expenses);
 
         // If there are no settings, no categories, and no expenses, AND there is no last backup, don't run
         if (!settings && categoriesArray.length === 0 && expensesArray.length === 0) {
@@ -100,7 +122,7 @@ export const LocalBackupProvider: React.FC<{ children: ReactNode }> = ({ childre
         }
 
         const currentDataHash = await localBackupService.getCurrentDataHash();
-        if (settings && settings.lastBackupHash === currentDataHash) {
+        if (!force && settings && settings.lastBackupHash === currentDataHash) {
             toast.success('Your data is already safely backed up!', { icon: '✨' });
             return;
         }
@@ -150,6 +172,11 @@ export const LocalBackupProvider: React.FC<{ children: ReactNode }> = ({ childre
     const runCatchupIfNeeded = useCallback(async () => {
         if (!isEnabled || !hasDirectoryAccess) return;
 
+        // Retrospectively check and create missing final backups for past months
+        localBackupService.checkAndCreateMissingFinalBackups().catch(err => {
+            console.error('Failed to run retrospective final backup check:', err);
+        });
+
         const now = new Date();
         const currentHHMM = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
 
@@ -161,7 +188,7 @@ export const LocalBackupProvider: React.FC<{ children: ReactNode }> = ({ childre
 
             if (todayStr !== lastBackupDateStr) {
                 console.log('Catch-up backup triggered (scheduled time missed)');
-                await performManualBackup();
+                await performManualBackup(true);
             }
         }
     }, [isEnabled, hasDirectoryAccess, backupTime, lastBackupDate, performManualBackup]);
@@ -172,18 +199,25 @@ export const LocalBackupProvider: React.FC<{ children: ReactNode }> = ({ childre
 
         const checkBackupSchedule = async () => {
             const now = new Date();
+            const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+            const isLastDay = now.getMonth() !== tomorrow.getMonth();
             const currentHHMM = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
+            const isEndOfMonthLastMinute = isLastDay && currentHHMM === '23:59';
 
-            // exact minute match for the cron
-            if (currentHHMM === backupTime) {
-                // Check if we already backed up today
+            // exact minute match for the cron or end of month
+            if (currentHHMM === backupTime || isEndOfMonthLastMinute) {
                 const todayStr = now.toISOString().split('T')[0];
                 const lastBackupDateObj = lastBackupDate ? new Date(lastBackupDate) : null;
-                const lastBackupDateStr = lastBackupDateObj ? lastBackupDateObj.toISOString().split('T')[0] : null;
+                const lastBackupTimeStr = lastBackupDateObj ? lastBackupDateObj.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }) : null;
+                const lastBackupDayStr = lastBackupDateObj ? lastBackupDateObj.toISOString().split('T')[0] : null;
 
-                if (todayStr !== lastBackupDateStr) {
-                    console.log('Scheduled backup triggered at', currentHHMM);
-                    await performManualBackup();
+                const alreadyBackedUpForThisTrigger = isEndOfMonthLastMinute 
+                    ? (lastBackupDayStr === todayStr && lastBackupTimeStr === '23:59')
+                    : (lastBackupDayStr === todayStr);
+
+                if (!alreadyBackedUpForThisTrigger) {
+                    console.log(isEndOfMonthLastMinute ? 'End-of-month final backup triggered' : 'Scheduled backup triggered');
+                    await performManualBackup(true);
                 }
             }
         };
@@ -223,7 +257,10 @@ export const LocalBackupProvider: React.FC<{ children: ReactNode }> = ({ childre
         directoryName,
         getDirectoryName: () => localBackupService.getDirectoryName(),
         getMostRecentBackup: () => localBackupService.getMostRecentBackup(),
-        parseBackupFile: (file: File) => localBackupService.parseBackupFile(file)
+        parseBackupFile: (file: File) => localBackupService.parseBackupFile(file),
+        getBackupTransactionsForMonth: (monthKey: string) => localBackupService.getBackupTransactionsForMonth(monthKey),
+        getAvailableBackupMonths: () => localBackupService.getAvailableBackupMonths(),
+        requestPersistedPermission: () => localBackupService.requestPersistedPermission()
     };
 
     return (

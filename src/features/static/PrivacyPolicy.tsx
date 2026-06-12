@@ -1,10 +1,12 @@
 import React from 'react';
+import { useLanguage } from '../../application/contexts/LanguageContext';
 
 interface PrivacyPolicyProps {
     onBack: () => void;
 }
 
 const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
+    const { t } = useLanguage();
     return (
         <div className="max-w-2xl mx-auto py-8 px-4 animate-fade-in">
             {/* Header */}
@@ -15,7 +17,7 @@ const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
                 >
                     <span className="material-symbols-outlined">home</span>
                 </button>
-                <h1 className="text-3xl font-extrabold text-stone-900 dark:text-white tracking-tight">Privacy Policy</h1>
+                <h1 className="text-3xl font-extrabold text-stone-900 dark:text-white tracking-tight">{t('privacy.title')}</h1>
             </div>
 
             {/* Main Content */}
@@ -30,9 +32,9 @@ const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
                         </div>
 
                         <div>
-                            <h2 className="text-xl font-bold text-stone-900 dark:text-white mb-2">1. Our Privacy Mission</h2>
+                            <h2 className="text-xl font-bold text-stone-900 dark:text-white mb-2">{t('privacy.mission_title')}</h2>
                             <p className="text-sm text-stone-600 dark:text-stone-300 leading-relaxed">
-                                CostPilot is built on the principle of absolute financial privacy. Your financial data is sensitive, and we believe it should be yours and yours alone.
+                                {t('privacy.mission_desc')}
                             </p>
                         </div>
                     </div>
@@ -43,25 +45,25 @@ const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
                     <div className="card p-6 border-[#AF8F42]/20 dark:border-[#AF8F42]/10 bg-brand-surface-light dark:bg-brand-surface-dark">
                         <div className="flex items-center gap-3 mb-3 text-primary-600 dark:text-primary-400">
                             <span className="material-symbols-outlined">save</span>
-                            <h3 className="font-bold">2. Local Storage & Backups</h3>
+                            <h3 className="font-bold">{t('privacy.storage_title')}</h3>
                         </div>
                         <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed mb-3">
-                            Your transactions and financial data are stored solely on your local device. We offer a Local Auto-Backup feature for data safety:
+                            {t('privacy.storage_desc')}
                         </p>
                         <ul className="list-disc list-inside space-y-1.5 pl-1 text-[11px] text-stone-500 dark:text-stone-400">
-                            <li>Saved locally to a folder of your explicit choosing.</li>
-                            <li>Rolling 30-day history backups run in the background.</li>
-                            <li>You retain absolute governance over files storage.</li>
+                            <li>{t('privacy.storage_bullet1')}</li>
+                            <li>{t('privacy.storage_bullet2')}</li>
+                            <li>{t('privacy.storage_bullet3')}</li>
                         </ul>
                     </div>
 
                     <div className="card p-6 border-[#AF8F42]/20 dark:border-[#AF8F42]/10 bg-brand-surface-light dark:bg-brand-surface-dark">
                         <div className="flex items-center gap-3 mb-3 text-primary-600 dark:text-primary-400">
                             <span className="material-symbols-outlined">lock</span>
-                            <h3 className="font-bold">3. Zero Access & Telemetry</h3>
+                            <h3 className="font-bold">{t('privacy.zero_access_title')}</h3>
                         </div>
                         <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
-                            There are no servers, no telemetry, and no accounts. The developer (Apurbo) and third-party providers do not monitor, read, or analyze your individual financial transactions. CostPilot operates strictly offline.
+                            {t('privacy.zero_access_desc')}
                         </p>
                     </div>
                 </div>
@@ -70,17 +72,17 @@ const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
                 <div className="card p-6 border-[#AF8F42]/20 dark:border-[#AF8F42]/10 bg-brand-surface-light dark:bg-brand-surface-dark">
                     <div className="flex items-center gap-3 mb-3 text-primary-600 dark:text-primary-400">
                         <span className="material-symbols-outlined">delete_forever</span>
-                        <h3 className="font-bold">4. Your Rights</h3>
+                        <h3 className="font-bold">{t('privacy.rights_title')}</h3>
                     </div>
                     <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
-                        You have full control over your data. You can delete your transactions or clear your app storage at any time, which permanently removes your data from your local device repository.
+                        {t('privacy.rights_desc')}
                     </p>
                 </div>
 
                 {/* Signature/Footer */}
                 <div className="text-center py-6">
                     <p className="text-stone-400 dark:text-stone-500 text-[10px] font-bold uppercase tracking-widest">
-                        Last Updated: March 8, 2026
+                        {t('privacy.last_updated')}
                     </p>
                     <div className="w-12 h-px bg-[#AF8F42]/30 mx-auto mt-4"></div>
                 </div>

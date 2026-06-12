@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View } from '../entities/types';
 import Footer from './Footer';
 import { useLocalBackup } from '../application/contexts/LocalBackupContext';
+import { useLanguage } from '../application/contexts/LanguageContext';
 
 interface LayoutProps {
     children: React.ReactNode;
@@ -16,6 +17,15 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate, onAd
     const [isFabVisible, setIsFabVisible] = useState(true);
     const [isHeaderVisible, setIsHeaderVisible] = useState(true);
     const lastScrollY = useRef(0);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const { t } = useLanguage();
+
+    // Reset scroll position on route/view change
+    useEffect(() => {
+        if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTop = 0;
+        }
+    }, [currentView]);
 
 
     // Backup Context for Nav Action
@@ -32,10 +42,10 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate, onAd
         setIsSidebarOpen(false);
     };
 
-    const navItems: { view: View; icon: string; label: string }[] = [
-        { view: 'dashboard', icon: 'dashboard', label: 'Dashboard' },
-        { view: 'history', icon: 'history', label: 'History' },
-        { view: 'settings', icon: 'settings', label: 'Settings' },
+    const navItems: { view: View; icon: string; labelKey: string }[] = [
+        { view: 'dashboard', icon: 'dashboard', labelKey: 'common.dashboard' },
+        { view: 'history', icon: 'history', labelKey: 'common.history' },
+        { view: 'settings', icon: 'settings', labelKey: 'common.settings' },
     ];
 
     // Track the last directly-selected main nav item
@@ -90,7 +100,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate, onAd
                                                     ? 'bg-rose-500/10 border-rose-500/30 text-rose-500'
                                                     : 'bg-brand-surface-light dark:bg-brand-surface-dark border-[#AF8F42]/30 text-stone-600 dark:text-stone-400 hover:border-[#AF8F42] hover:text-[#AF8F42] hover:bg-[#AF8F42]/5'
                                         }`}
-                                    title={`Last backup: ${lastBackupDate ? new Date(lastBackupDate).toLocaleDateString() : 'Never'}`}
+                                    title={lastBackupDate ? t('navigation.last_backup', { date: new Date(lastBackupDate).toLocaleDateString() }) : t('navigation.never')}
                                 >
                                     <span className={`material-symbols-outlined text-[20px] ${backupStatus === 'syncing' ? 'animate-spin' : ''}`}>
                                         {backupStatus === 'success' ? 'check_circle' : backupStatus === 'error' ? 'error' : 'sync'}
@@ -113,7 +123,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate, onAd
                                         <div className="absolute inset-0 bg-[#AF8F42]/10 dark:bg-[#AF8F42]/5 backdrop-blur-md rounded-xl border border-[#AF8F42]/20 dark:border-[#AF8F42]/10 animate-fade-in"></div>
                                     )}
                                     <span className="material-symbols-outlined text-2xl relative z-10">{item.icon}</span>
-                                    <span className="hidden lg:block relative z-10">{item.label}</span>
+                                    <span className="hidden lg:block relative z-10">{t(item.labelKey)}</span>
                                 </button>
                             ))}
                         </nav>
@@ -125,16 +135,16 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate, onAd
                                 <div className="size-7 rounded-full bg-primary-100 dark:bg-primary-900/20 flex items-center justify-center text-primary-600 dark:text-primary-400 mb-1.5 border border-primary-200 dark:border-primary-800">
                                     <span className="material-symbols-outlined text-sm">verified_user</span>
                                 </div>
-                                <p className="text-[10px] font-bold text-stone-900 dark:text-white uppercase tracking-wider mb-0.5">Local-First</p>
+                                <p className="text-[10px] font-bold text-stone-900 dark:text-white uppercase tracking-wider mb-0.5">{t('navigation.local_first')}</p>
                                 <p className="text-[8px] text-stone-500 dark:text-stone-400 font-medium leading-tight">
-                                    Private & Encrypted.
+                                    {t('navigation.private_encrypted')}
                                 </p>
                             </div>
                         </div>
 
                         {/* Legal & Support Section (Desktop Only) */}
                         <div className="hidden lg:block pb-6 space-y-3 px-2">
-                            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest px-4">Legal & Support</p>
+                            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest px-4">{t('navigation.legal_support')}</p>
                             <div className="space-y-1">
                                 <button
                                     onClick={() => handleNavigate('terms')}
@@ -147,7 +157,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate, onAd
                                         <div className="absolute inset-x-0 inset-y-1 bg-[#AF8F42]/10 dark:bg-[#AF8F42]/5 backdrop-blur-md rounded-xl border border-[#AF8F42]/20 dark:border-[#AF8F42]/10 animate-fade-in"></div>
                                     )}
                                     <span className="material-symbols-outlined text-base group-hover:scale-110 transition-transform relative z-10">article</span>
-                                    <span className="text-[12px] relative z-10">Terms of Service</span>
+                                    <span className="text-[12px] relative z-10">{t('navigation.terms_of_service')}</span>
                                 </button>
                                 <button
                                     onClick={() => handleNavigate('privacy')}
@@ -160,14 +170,14 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate, onAd
                                         <div className="absolute inset-x-0 inset-y-1 bg-[#AF8F42]/10 dark:bg-[#AF8F42]/5 backdrop-blur-md rounded-xl border border-[#AF8F42]/20 dark:border-[#AF8F42]/10 animate-fade-in"></div>
                                     )}
                                     <span className="material-symbols-outlined text-base group-hover:scale-110 transition-transform relative z-10">policy</span>
-                                    <span className="text-[12px] relative z-10">Privacy Policy</span>
+                                    <span className="text-[12px] relative z-10">{t('navigation.privacy_policy')}</span>
                                 </button>
                                 <button
                                     onClick={() => handleNavigate('support')}
                                     className="w-full flex items-center gap-3 px-4 py-2 text-[12px] font-bold text-stone-500 hover:text-[#AF8F42] transition-colors group"
                                 >
                                     <span className="material-symbols-outlined text-base group-hover:scale-110 transition-transform">headset_mic</span>
-                                    Get Help
+                                    {t('navigation.get_help')}
                                 </button>
                             </div>
                         </div>
@@ -220,6 +230,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate, onAd
                         </header>
 
                         <div 
+                            ref={scrollContainerRef}
                             className="flex-1 px-5 py-4 md:px-6 md:py-6 lg:px-14 overflow-y-auto w-full max-w-5xl mx-auto main-content-container"
                             onScroll={(e) => {
                                 const currentScrollY = e.currentTarget.scrollTop;
@@ -267,7 +278,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigate, onAd
                                         <div className="absolute inset-x-0 inset-y-2 bg-primary-800/10 dark:bg-white/10 backdrop-blur-md rounded-xl border border-primary-500/10 dark:border-white/20 animate-scale-in"></div>
                                     )}
                                     <span className="material-symbols-outlined text-2xl relative z-10">{item.icon}</span>
-                                    <span className="text-[10px] font-bold relative z-10">{item.label}</span>
+                                    <span className="text-[10px] font-bold relative z-10">{t(item.labelKey)}</span>
                                 </button>
                             ))}
                         </nav>

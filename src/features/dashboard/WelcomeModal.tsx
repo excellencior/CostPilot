@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useLanguage } from '../../application/contexts/LanguageContext';
 
 interface WelcomeModalProps {
     isOpen: boolean;
@@ -7,6 +8,8 @@ interface WelcomeModalProps {
 }
 
 const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose }) => {
+    const { t } = useLanguage();
+
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden';
@@ -32,20 +35,19 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose }) => {
                 {/* Decorative Icon */}
                 <img src="/costpilot_logo_suite.svg" alt="CostPilot" className="size-20 mb-6 object-contain" />
 
-                <h2 className="text-2xl font-black tracking-tight mb-3 font-brand-title">
-                    <span className="text-[#8c7851]">Welcome to Cost</span>
-                    <span className="text-[#8c7851]/70">Pilot!</span>
+                <h2 className="text-2xl font-black tracking-tight mb-3 font-brand-title text-[#8c7851]">
+                    {t('welcome.title')}
                 </h2>
 
                 <p className="text-sm text-stone-600 dark:text-stone-400 leading-relaxed mb-8 max-w-sm">
-                    Your personal finance journey starts here. CostPilot helps you track expenses, analyze spending habits, and manage your money with complete privacy and visual clarity. Let's get started by adding your first transaction.
+                    {t('welcome.desc')}
                 </p>
 
                 <button
                     onClick={onClose}
                     className="w-full btn-primary py-3.5 text-[15px] flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform active:scale-95"
                 >
-                    <span>Let's Go</span>
+                    <span>{t('welcome.btn')}</span>
                     <span className="material-symbols-outlined text-[20px]">rocket_launch</span>
                 </button>
             </div>

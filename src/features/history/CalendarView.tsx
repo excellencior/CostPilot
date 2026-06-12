@@ -1,25 +1,105 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Transaction, Category } from '../../entities/types';
 import { formatCompactNumber } from '../../entities/financial';
+import { useLanguage } from '../../application/contexts/LanguageContext';
+import { LocalRepository } from '../../infrastructure/local/local-repository';
 
+
+import { useLocalBackup } from '../../application/contexts/LocalBackupContext';
 
 interface CalendarViewProps {
-    transactions: Transaction[];
+    transactions?: Transaction[];
     currencySymbol: string;
     onTransactionClick: (t: Transaction) => void;
     initialDate?: Date;
     typeFilter?: 'all' | 'income' | 'expense';
 }
 
+const getMonthName = (monthIndex: number, isBengali: boolean): string => {
+    const monthsEn = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ];
+    const monthsBn = [
+        "জানুয়ারি", "ফেব্রুয়ারি", "মার্চ", "এপ্রিল", "মে", "জুন",
+        "জুলাই", "আগস্ট", "সেপ্টেম্বর", "অক্টোবর", "নভেম্বর", "ডিসেম্বর"
+    ];
+    return isBengali ? monthsBn[monthIndex] : monthsEn[monthIndex];
+};
+
+const formatFriendlyDate = (date: Date, isBengali: boolean): string => {
+    const day = date.getDate();
+    const monthIndex = date.getMonth();
+    const year = date.getFullYear();
+
+    const monthsShortEn = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthsShortBn = ["জানু", "ফেব্রু", "মার্চ", "এপ্রিল", "মে", "জুন", "জুলাই", "আগস্ট", "সেপ্টে", "অক্টো", "নভে", "ডিসে"];
+    const monthStr = isBengali ? monthsShortBn[monthIndex] : monthsShortEn[monthIndex];
+
+    if (isBengali) {
+        const toBengaliNumber = (num: number) => {
+            const bnNums = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+            return num.toString().split('').map(digit => bnNums[parseInt(digit, 10)] || digit).join('');
+        };
+        return `${toBengaliNumber(day)} ${monthStr}, ${toBengaliNumber(year)}`;
+    }
+    return `${day} ${monthStr}, ${year}`;
+};
+
 const CalendarView: React.FC<CalendarViewProps> = ({
-    transactions,
+    transactions: propTransactions,
     currencySymbol,
     onTransactionClick,
     initialDate,
     typeFilter = 'all'
 }) => {
+    const { t, language } = useLanguage();
+    const { getBackupTransactionsForMonth } = useLocalBackup();
     const [currentDate, setCurrentDate] = useState(initialDate || new Date());
+    const [localTransactions, setLocalTransactions] = useState<Transaction[]>([]);
+
+    const loadTransactions = useCallback(async () => {
+        try {
+            const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+            const localMonths = LocalRepository.getAvailableMonths();
+            const hasLocal = localMonths.some(lm => lm.monthKey === monthKey);
+
+            let txs: Transaction[] = [];
+            if (hasLocal) {
+                txs = LocalRepository.getExpensesForMonth(monthKey) as Transaction[];
+            } else {
+                const backupTxs = await getBackupTransactionsForMonth(monthKey);
+                txs = (backupTxs || []) as Transaction[];
+            }
+            setLocalTransactions(txs);
+        } catch (err) {
+            console.error("Failed to load calendar transactions:", err);
+            setLocalTransactions([]);
+        }
+    }, [currentDate, getBackupTransactionsForMonth]);
+
+    useEffect(() => {
+        loadTransactions();
+        window.addEventListener('costpilot-settings-updated', loadTransactions);
+        window.addEventListener('storage', loadTransactions);
+        return () => {
+            window.removeEventListener('costpilot-settings-updated', loadTransactions);
+            window.removeEventListener('storage', loadTransactions);
+        };
+    }, [loadTransactions]);
+
+    const validTransactions = useMemo(() => {
+        const txs = propTransactions || localTransactions;
+        return (txs || []).filter((t): t is Transaction =>
+            t !== null &&
+            t !== undefined &&
+            typeof t === 'object' &&
+            typeof t.id === 'string' &&
+            typeof t.amount === 'number' &&
+            (t.type === 'income' || t.type === 'expense')
+        );
+    }, [propTransactions, localTransactions]);
 
     const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
     const firstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
@@ -38,7 +118,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 
         for (let d = 1; d <= numDays; d++) {
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-            const dayTransactions = transactions.filter(t => {
+            const dayTransactions = validTransactions.filter(t => {
                 const matchesDate = t.date === dateStr;
                 const matchesType = typeFilter === 'all' || t.type === typeFilter;
                 return matchesDate && matchesType;
@@ -47,7 +127,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
         }
 
         return days;
-    }, [currentDate, transactions, typeFilter]);
+    }, [currentDate, validTransactions, typeFilter]);
 
     const [touchStart, setTouchStart] = useState<number | null>(null);
     const [touchEnd, setTouchEnd] = useState<number | null>(null);
@@ -86,7 +166,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
         setCurrentDate(nextDate);
     };
 
-    const monthName = currentDate.toLocaleString('default', { month: 'long' });
+    const monthName = getMonthName(currentDate.getMonth(), language === 'bn');
     const year = currentDate.getFullYear();
 
     const getDayStats = (dayTransactions: Transaction[]) => {
@@ -128,7 +208,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
             >
 
                 {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(d => (
-                    <div key={d} className="text-center py-2 text-[15px] font-black text-stone-400 tracking-widest">{d}</div>
+                    <div key={d} className="text-center py-2 text-[15px] font-black text-stone-400 tracking-widest">{t(`calendar.days.${d}`)}</div>
                 ))}
                 {calendarData.map((data, idx) => {
                     const stats = data.day ? getDayStats(data.transactions) : null;
@@ -194,12 +274,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                                 <div className="min-w-0">
                                     <h3 className="font-bold text-stone-900 dark:text-white capitalize leading-tight truncate">
                                         {(() => {
-                                            const [y, m, d] = selectedDayData.dateStr.split('-').map(Number);
-                                            const dateObj = new Date(y, m - 1, d);
-                                            return `${dateObj.getDate()} ${dateObj.toLocaleString('default', { month: 'short' })} ${dateObj.getFullYear()}`;
+                                            const dateObj = new Date(selectedDayData.dateStr);
+                                            const validDate = isNaN(dateObj.getTime()) ? new Date() : dateObj;
+                                            return formatFriendlyDate(validDate, language === 'bn');
                                         })()}
                                     </h3>
-                                    <p className="text-[10px] text-stone-500 font-bold uppercase tracking-wider">{selectedDayData.transactions.length} Transactions</p>
+                                    <p className="text-[10px] text-stone-500 font-bold uppercase tracking-wider">{t('calendar.transactions_label', { count: selectedDayData.transactions.length })}</p>
                                 </div>
                             </div>
                         </div>
@@ -223,7 +303,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                                     <div className="flex-1 min-w-0">
                                         <p className="font-bold text-sm text-stone-900 dark:text-white truncate">{t.title}</p>
                                         <div className="flex items-center gap-1.5 mt-0.5">
-                                            <span className={`text-[9px] font-extrabold uppercase tracking-widest leading-none ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-500 dark:text-stone-400'}`}>{t.type}</span>
+                                            <span className={`text-[9px] font-extrabold uppercase tracking-widest leading-none ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-500 dark:text-stone-400'}`}>{t.type === 'income' ? t('common.income') : t('common.expense')}</span>
                                         </div>
                                     </div>
                                     <div className={`font-bold text-base whitespace-nowrap ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-900 dark:text-white'}`}>
@@ -233,7 +313,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                             )) : (
                                 <div className="py-8 flex flex-col items-center justify-center text-stone-400 opacity-50">
                                     <span className="material-symbols-outlined text-4xl mb-2">receipt_long</span>
-                                    <p className="text-xs font-bold uppercase tracking-widest">No Entries</p>
+                                    <p className="text-xs font-bold uppercase tracking-widest">{t('calendar.no_entries')}</p>
                                 </div>
                             )}
                         </div>

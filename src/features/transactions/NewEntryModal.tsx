@@ -3,6 +3,7 @@ import { Category, Transaction } from '../../entities/types';
 import DatePicker from '../../shared/ui/DatePicker';
 import ConfirmModal from '../../shared/ui/ConfirmModal';
 import NumericKeypad from '../../shared/ui/NumericKeypad';
+import { useLanguage } from '../../application/contexts/LanguageContext';
 
 const DEFAULT_EXPENSE_CATEGORY: Category = {
   id: 'default-expense',
@@ -35,6 +36,7 @@ const NewEntryModal: React.FC<NewEntryModalProps> = ({
   onDelete,
   editingTransaction
 }) => {
+  const { t } = useLanguage();
   const [type, setType] = useState<'expense' | 'income'>('expense');
   const [amount, setAmount] = useState('');
   const [title, setTitle] = useState('');
@@ -130,7 +132,7 @@ const NewEntryModal: React.FC<NewEntryModalProps> = ({
         <div className="relative w-full max-w-sm bg-brand-surface-light dark:bg-brand-surface-dark rounded-2xl shadow-2xl overflow-hidden animate-scale-in">
           <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100 dark:border-stone-800">
             <h2 className="text-lg font-bold text-stone-900 dark:text-white">
-              {editingTransaction ? 'Edit Transaction' : 'Add Transaction'}
+              {editingTransaction ? t('overview.edit_entry') : t('entry.new_entry')}
             </h2>
             <div className="flex items-center gap-2">
               {editingTransaction && onDelete && (
@@ -138,7 +140,7 @@ const NewEntryModal: React.FC<NewEntryModalProps> = ({
                   type="button"
                   onClick={handleDelete}
                   className="size-8 rounded-full flex items-center justify-center text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
-                  title="Delete Transaction"
+                  title={t('overview.delete_title')}
                 >
                   <span className="material-symbols-outlined text-xl">delete</span>
                 </button>
@@ -154,25 +156,25 @@ const NewEntryModal: React.FC<NewEntryModalProps> = ({
 
           <form onSubmit={handleSave} className="p-5 space-y-4">
             <div className="flex p-1 bg-stone-100 dark:bg-stone-800 rounded-lg">
-              {(['expense', 'income'] as const).map((t) => (
+              {(['expense', 'income'] as const).map((typeVal) => (
                 <button
-                  key={t}
+                  key={typeVal}
                   type="button"
-                  onClick={() => setType(t)}
+                  onClick={() => setType(typeVal)}
                   disabled={!!editingTransaction}
-                  className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all capitalize ${type === t
+                  className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all capitalize ${type === typeVal
                     ? 'bg-brand-surface-light dark:bg-stone-700 text-stone-900 dark:text-white shadow-sm'
                     : 'text-stone-500 opacity-50'
                     }`}
                 >
-                  {t}
+                  {typeVal === 'income' ? t('common.income') : t('common.expense')}
                 </button>
               ))}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="label-text">Amount</label>
+                <label className="label-text">{t('entry.amount')}</label>
                 <div
                   role="button"
                   tabIndex={-1}
@@ -194,7 +196,7 @@ const NewEntryModal: React.FC<NewEntryModalProps> = ({
 
               <div>
                 <DatePicker
-                  label="Date"
+                  label={t('entry.date')}
                   value={date}
                   onChange={setDate}
                 />
@@ -202,13 +204,13 @@ const NewEntryModal: React.FC<NewEntryModalProps> = ({
             </div>
 
             <div>
-              <label className="label-text">Description</label>
+              <label className="label-text">{t('entry.desc_label')}</label>
               <textarea
                 ref={descRef}
                 rows={1}
                 className="input-field resize-none w-full leading-6"
                 style={{ maxHeight: '6rem', overflowY: 'hidden', scrollbarWidth: 'none' }}
-                placeholder="What was this for?"
+                placeholder={t('entry.description_placeholder')}
                 value={title}
                 onChange={(e) => {
                   setTitle(e.target.value);
@@ -227,13 +229,13 @@ const NewEntryModal: React.FC<NewEntryModalProps> = ({
                 onClick={onClose}
                 className="btn-secondary flex-1 py-2 text-xs"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 type="submit"
                 className="btn-primary flex-1 py-2 text-xs"
               >
-                {editingTransaction ? 'Update' : 'Save'}
+                {editingTransaction ? t('common.update') : t('common.save')}
               </button>
             </div>
           </form>
@@ -244,9 +246,10 @@ const NewEntryModal: React.FC<NewEntryModalProps> = ({
         isOpen={isDeleteConfirmOpen}
         onClose={() => setIsDeleteConfirmOpen(false)}
         onConfirm={confirmDelete}
-        title="Delete Transaction"
-        message="Are you sure you want to remove this record? This action cannot be undone."
-        confirmLabel="Delete"
+        title={t('overview.delete_title')}
+        message={t('overview.delete_confirm')}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
         variant="danger"
       />
 

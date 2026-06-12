@@ -1,10 +1,12 @@
 import React from 'react';
+import { useLanguage } from '../../application/contexts/LanguageContext';
 
 interface TermsOfServiceProps {
     onBack: () => void;
 }
 
 const TermsOfService: React.FC<TermsOfServiceProps> = ({ onBack }) => {
+    const { t } = useLanguage();
     return (
         <div className="max-w-2xl mx-auto py-8 px-4 animate-fade-in">
             {/* Header */}
@@ -15,7 +17,7 @@ const TermsOfService: React.FC<TermsOfServiceProps> = ({ onBack }) => {
                 >
                     <span className="material-symbols-outlined">home</span>
                 </button>
-                <h1 className="text-3xl font-extrabold text-stone-900 dark:text-white tracking-tight">Terms of Service</h1>
+                <h1 className="text-3xl font-extrabold text-stone-900 dark:text-white tracking-tight">{t('terms.title')}</h1>
             </div>
 
             {/* Main Content */}
@@ -30,9 +32,9 @@ const TermsOfService: React.FC<TermsOfServiceProps> = ({ onBack }) => {
                         </div>
 
                         <div>
-                            <h2 className="text-xl font-bold text-stone-900 dark:text-white mb-2">1. Acceptance of Terms</h2>
+                            <h2 className="text-xl font-bold text-stone-900 dark:text-white mb-2">{t('terms.acceptance_title')}</h2>
                             <p className="text-sm text-stone-600 dark:text-stone-300 leading-relaxed">
-                                By accessing or using CostPilot, you agree to be bound by these Terms of Service. If you do not agree to all of these terms, do not use the application. CostPilot is provided on an "as-is" and "as-available" basis.
+                                {t('terms.acceptance_desc')}
                             </p>
                         </div>
                     </div>
@@ -44,15 +46,15 @@ const TermsOfService: React.FC<TermsOfServiceProps> = ({ onBack }) => {
                         <div>
                             <div className="flex items-center gap-3 mb-3 text-primary-600 dark:text-primary-400">
                                 <span className="material-symbols-outlined">database</span>
-                                <h3 className="font-bold">2. Use of Service</h3>
+                                <h3 className="font-bold">{t('terms.use_title')}</h3>
                             </div>
                             <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed mb-3">
-                                CostPilot is a personal finance tracking tool. It operates exclusively as a local-first application, meaning your data is stored directly on your device.
+                                {t('terms.use_desc')}
                             </p>
                         </div>
                         <div className="bg-primary-500/5 dark:bg-primary-950/20 border-l-2 border-primary-500 p-2.5 rounded-r-lg">
                             <p className="text-[10px] text-stone-500 dark:text-stone-400 leading-relaxed">
-                                <strong>Backup:</strong> Grants read/write permissions for a directory of choice. You remain responsible for backup file safety.
+                                <strong>{t('terms.backup_responsibility_title')}</strong> {t('terms.backup_responsibility_desc')}
                             </p>
                         </div>
                     </div>
@@ -60,10 +62,10 @@ const TermsOfService: React.FC<TermsOfServiceProps> = ({ onBack }) => {
                     <div className="card p-6 border-[#AF8F42]/20 dark:border-[#AF8F42]/10 bg-brand-surface-light dark:bg-brand-surface-dark">
                         <div className="flex items-center gap-3 mb-3 text-primary-600 dark:text-primary-400">
                             <span className="material-symbols-outlined">shield_person</span>
-                            <h3 className="font-bold">3. User Responsibility</h3>
+                            <h3 className="font-bold">{t('terms.responsibility_title')}</h3>
                         </div>
                         <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
-                            You are responsible for maintaining the security of your device. Since CostPilot does not utilize cloud synchronization or accounts, lost devices or deleted app data cannot be recovered by us. CostPilot does not provide financial or tax advice.
+                            {t('terms.responsibility_desc')}
                         </p>
                     </div>
                 </div>
@@ -72,17 +74,17 @@ const TermsOfService: React.FC<TermsOfServiceProps> = ({ onBack }) => {
                 <div className="card p-6 border-[#AF8F42]/20 dark:border-[#AF8F42]/10 bg-brand-surface-light dark:bg-brand-surface-dark">
                     <div className="flex items-center gap-3 mb-3 text-primary-600 dark:text-primary-400">
                         <span className="material-symbols-outlined">edit_note</span>
-                        <h3 className="font-bold">4. Modifications to Terms</h3>
+                        <h3 className="font-bold">{t('terms.modifications_title')}</h3>
                     </div>
                     <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
-                        We reserve the right to modify these terms at any time. Significant changes will be announced within the application. Continued use of the service after such changes constitutes acceptance of the new terms.
+                        {t('terms.modifications_desc')}
                     </p>
                 </div>
 
                 {/* Signature/Footer */}
                 <div className="text-center py-6">
                     <p className="text-stone-400 dark:text-stone-500 text-[10px] font-bold uppercase tracking-widest">
-                        Last Updated: March 8, 2026
+                        {t('terms.last_updated')}
                     </p>
                     <div className="w-12 h-px bg-[#AF8F42]/30 mx-auto mt-4"></div>
                 </div>

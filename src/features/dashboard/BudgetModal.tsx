@@ -4,6 +4,7 @@ import { BudgetPlan } from '../../entities/types';
 import { LocalRepository } from '../../infrastructure/local/local-repository';
 import NumericKeypad from '../../shared/ui/NumericKeypad';
 import ConfirmModal from '../../shared/ui/ConfirmModal';
+import { useLanguage } from '../../application/contexts/LanguageContext';
 
 interface BudgetModalProps {
     isOpen: boolean;
@@ -14,14 +15,6 @@ interface BudgetModalProps {
     onBudgetChange: () => void;
 }
 
-const BUDGET_QUOTES = [
-    "A budget is telling your money where to go.",
-    "Don't save what's left after spending — spend what's left after saving.",
-    "The secret to financial freedom starts with a plan.",
-    "Every budget is a step closer to your dreams.",
-    "Small budgets lead to big futures.",
-];
-
 const BudgetModal: React.FC<BudgetModalProps> = ({
     isOpen,
     onClose,
@@ -30,6 +23,7 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
     currencySymbol,
     onBudgetChange
 }) => {
+    const { t, language } = useLanguage();
     const [plans, setPlans] = useState<BudgetPlan[]>([]);
     const [mode, setMode] = useState<'select' | 'edit'>('select');
     const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -42,13 +36,27 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
     const [deleteTarget, setDeleteTarget] = useState<BudgetPlan | null>(null);
     const [cursorVisible, setCursorVisible] = useState(true);
 
+    const quotes = t('budget.quotes') as unknown as string[];
+    const quote = useMemo(() => {
+        if (!quotes || !Array.isArray(quotes)) return '';
+        return quotes[Math.floor(Math.random() * quotes.length)];
+    }, [isOpen, quotes]);
+
+    const getLocalizedMonth = (monthName: string, year: number) => {
+        if (monthName === 'Unknown') return monthName;
+        try {
+            const date = new Date(`${monthName} 1, ${year}`);
+            return date.toLocaleString(language === 'bn' ? 'bn-BD' : 'en-US', { month: 'long' });
+        } catch {
+            return monthName;
+        }
+    };
+
     useEffect(() => {
         if (!isKeypadOpen) { setCursorVisible(true); return; }
         const id = setInterval(() => setCursorVisible(v => !v), 530);
         return () => clearInterval(id);
     }, [isKeypadOpen]);
-
-    const quote = useMemo(() => BUDGET_QUOTES[Math.floor(Math.random() * BUDGET_QUOTES.length)], [isOpen]);
 
     useEffect(() => {
         if (isOpen) {
@@ -145,7 +153,7 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
                 <div className="relative w-full max-w-sm bg-brand-surface-light dark:bg-brand-surface-dark rounded-2xl shadow-2xl overflow-hidden animate-scale-in">
                     {/* Header */}
                     <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100 dark:border-stone-800">
-                        <h2 className="text-lg font-bold text-stone-900 dark:text-white">Monthly Budget</h2>
+                        <h2 className="text-lg font-bold text-stone-900 dark:text-white">{t('budget.title')}</h2>
                         <div className="flex items-center gap-1">
                             {plans.length > 0 && (
                                 <button
@@ -154,9 +162,9 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
                                         ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 px-3 gap-1'
                                         : 'bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 w-8'
                                         }`}
-                                    title={mode === 'edit' ? 'Done editing' : 'Edit plans'}
+                                    title={mode === 'edit' ? t('common.save') : t('budget.edit_plan')}
                                 >
-                                    {mode === 'edit' && <span className="text-xs font-bold">Save</span>}
+                                    {mode === 'edit' && <span className="text-xs font-bold">{t('common.save')}</span>}
                                     <span className="material-symbols-outlined text-[20px]">{mode === 'edit' ? 'check' : 'edit'}</span>
                                 </button>
                             )}
@@ -168,7 +176,7 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
                             {/* Active budget status — hidden in edit mode */}
                             {activeBudget !== null && mode !== 'edit' && (
                                 <div className="p-3 rounded-xl bg-[#AF8F42]/5 dark:bg-[#AF8F42]/10 border border-[#AF8F42]/20 flex items-center justify-between animate-scale-in">
-                                    <span className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">Active Budget</span>
+                                    <span className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">{t('budget.active_budget')}</span>
                                     <span className="text-lg font-black text-[#AF8F42]">{currencySymbol}{activeBudget.toLocaleString()}</span>
                                 </div>
                             )}
@@ -183,8 +191,8 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
                                         <span className="material-symbols-outlined text-xl">add</span>
                                     </div>
                                     <div className="text-left">
-                                        <p className="text-sm font-bold">Create New Plan</p>
-                                        <p className="text-[10px] text-stone-500 uppercase tracking-wider font-bold">Define a reusable budget</p>
+                                        <p className="text-sm font-bold">{t('budget.new_plan')}</p>
+                                        <p className="text-[10px] text-stone-500 uppercase tracking-wider font-bold">{t('budget.define_reusable')}</p>
                                     </div>
                                 </button>
                             )}
@@ -193,7 +201,7 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
                             {plans.length > 0 ? (
                                 <div className="space-y-2">
                                     <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest px-1 pt-1">
-                                        {mode === 'edit' ? 'Tap to edit' : 'Saved Plans'}
+                                        {mode === 'edit' ? t('budget.tap_to_edit') : t('budget.saved_plans')}
                                     </p>
                                     {plans.map((plan) => (
                                         <div key={plan.id} className="flex items-center gap-2">
@@ -219,7 +227,7 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
                                                     </div>
                                                     <div className="text-left">
                                                         <p className="text-sm font-bold text-stone-900 dark:text-white">{plan.name}</p>
-                                                        <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wider">Budget Plan</p>
+                                                        <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wider">{t('budget.plan_label')}</p>
                                                     </div>
                                                 </div>
                                                 <p className="text-base font-black text-stone-900 dark:text-white">{currencySymbol}{plan.amount.toLocaleString()}</p>
@@ -230,6 +238,7 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
                                                 <button
                                                     onClick={() => setDeleteTarget(plan)}
                                                     className="size-10 shrink-0 rounded-xl flex items-center justify-center text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors active:scale-95"
+                                                    title={t('common.delete')}
                                                 >
                                                     <span className="material-symbols-outlined text-xl">delete</span>
                                                 </button>
@@ -245,7 +254,7 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
                                     <p className="text-sm italic text-stone-500 dark:text-stone-400 leading-relaxed max-w-[240px] mx-auto">
                                         "{quote}"
                                     </p>
-                                    <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mt-3">Create your first plan above</p>
+                                    <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mt-3">{t('budget.new_plan')}</p>
                                 </div>
                             )}
 
@@ -255,7 +264,7 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
                                     onClick={handleClearBudget}
                                     className="w-full py-2.5 rounded-xl text-[11px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-900/20 hover:bg-rose-100 dark:hover:bg-rose-900/20 transition-all active:scale-95 animate-scale-in"
                                 >
-                                    Remove Budget for {currentMonth}
+                                    {t('budget.remove_budget', { month: getLocalizedMonth(currentMonth, currentYear) })}
                                 </button>
                             )}
                         </div>
@@ -275,7 +284,7 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
                         {/* Header */}
                         <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100 dark:border-stone-800">
                             <h2 className="text-lg font-bold text-stone-900 dark:text-white">
-                                {editingPlan ? 'Edit Plan' : 'New Budget Plan'}
+                                {editingPlan ? t('budget.edit_plan') : t('budget.new_plan')}
                             </h2>
                             <button
                                 onClick={handleCloseCreate}
@@ -287,19 +296,19 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
 
                         <div className="p-5 space-y-4">
                             <div>
-                                <label className="label-text">Plan Name</label>
+                                <label className="label-text">{t('budget.plan_name')}</label>
                                 <input
                                     type="text"
                                     value={newName}
                                     onChange={(e) => setNewName(e.target.value)}
-                                    placeholder="e.g. Tight Month, Standard..."
+                                    placeholder={t('budget.enter_name_placeholder')}
                                     className="input-field text-sm text-right"
                                     autoFocus
                                 />
                             </div>
 
                             <div>
-                                <label className="label-text">Amount</label>
+                                <label className="label-text">{t('budget.plan_amount')}</label>
                                 <div
                                     role="button"
                                     tabIndex={-1}
@@ -320,14 +329,14 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
                                     onClick={handleCloseCreate}
                                     className="btn-secondary flex-1 py-2 text-xs"
                                 >
-                                    Cancel
+                                    {t('common.cancel')}
                                 </button>
                                 <button
                                     onClick={handleSavePlan}
                                     disabled={!newName.trim() || !newAmount || parseFloat(newAmount) <= 0}
                                     className="btn-primary flex-1 py-2 text-xs disabled:opacity-40 disabled:cursor-not-allowed"
                                 >
-                                    {editingPlan ? 'Update' : 'Save Plan'}
+                                    {editingPlan ? t('common.save') : t('budget.save_plan')}
                                 </button>
                             </div>
                         </div>
@@ -340,9 +349,10 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
                 isOpen={!!deleteTarget}
                 onClose={() => setDeleteTarget(null)}
                 onConfirm={handleDeletePlan}
-                title="Delete Budget Plan"
-                message={`Are you sure you want to delete "${deleteTarget?.name}"? This action cannot be undone.`}
-                confirmLabel="Delete"
+                title={t('budget.delete_plan')}
+                message={t('budget.delete_confirm_desc', { name: deleteTarget?.name || '' })}
+                confirmLabel={t('common.delete')}
+                cancelLabel={t('common.cancel')}
                 variant="danger"
             />
 

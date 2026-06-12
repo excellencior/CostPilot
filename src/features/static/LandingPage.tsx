@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Preferences } from '@capacitor/preferences';
+import { useLanguage } from '../../application/contexts/LanguageContext';
 
 interface LandingPageProps {
     onAccepted?: () => void;
@@ -8,6 +9,7 @@ interface LandingPageProps {
 
 const LandingPage: React.FC<LandingPageProps> = ({ onAccepted }) => {
     const navigate = useNavigate();
+    const { t } = useLanguage();
 
 
     const handleContinue = async () => {
@@ -34,7 +36,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAccepted }) => {
                         </h1>
                     </div>
                     <p className="text-lg text-stone-500 dark:text-stone-400 max-w-lg mx-auto leading-relaxed">
-                        A privacy-first personal finance platform for tracking expenses, managing budgets, and analyzing your financial history with clarity.
+                        {t('landing.description')}
                     </p>
                 </div>
 
@@ -43,7 +45,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAccepted }) => {
                     <span className="material-symbols-outlined absolute -top-4 -left-2 text-[120px] text-[#AF8F42]/10 dark:text-[#AF8F42]/20 rotate-12 select-none pointer-events-none">format_quote</span>
                     <div className="relative z-10 space-y-4">
                         <p className="text-lg md:text-xl font-medium text-stone-700 dark:text-stone-300 leading-relaxed italic">
-                            "Built for simplicity and clarity. If by using this platform helps you in any way, that will be my greatest achievement. Toodle!"
+                            {t('landing.quote')}
                         </p>
                         <div className="h-1 w-12 bg-[#AF8F42] mx-auto rounded-full"></div>
                     </div>
@@ -55,21 +57,21 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAccepted }) => {
                         onClick={handleContinue}
                         className="w-full py-1 text-lg shadow-xl shadow-primary-500/20 flex items-center justify-center gap-3 transition-all btn-primary hover:scale-[1.02] active:scale-[0.98]"
                     >
-                        <span>Continue to App</span>
+                        <span>{t('landing.continue_btn')}</span>
                         <span className="material-symbols-outlined">arrow_forward</span>
                     </button>
 
                     <div className="flex items-center justify-center gap-4 text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">
-                        <button onClick={() => navigate('/privacy')} className="hover:text-[#AF8F42] transition-colors">Privacy Policy</button>
+                        <button onClick={() => navigate('/privacy')} className="hover:text-[#AF8F42] transition-colors">{t('navigation.privacy_policy')}</button>
                         <span className="size-1 rounded-full bg-stone-300 dark:bg-stone-700"></span>
-                        <button onClick={() => navigate('/terms')} className="hover:text-[#AF8F42] transition-colors">Terms of Service</button>
+                        <button onClick={() => navigate('/terms')} className="hover:text-[#AF8F42] transition-colors">{t('navigation.terms_of_service')}</button>
                     </div>
                 </div>
             </div>
 
             {/* Footer text */}
             <div className="w-full py-6 text-[10px] text-stone-400 dark:text-stone-500 font-medium tracking-widest uppercase text-center mt-auto">
-                &copy; {new Date().getFullYear()} CostPilot • Designed for visual clarity
+                &copy; {new Date().getFullYear()} CostPilot • {t('landing.visual_clarity')}
             </div>
         </div>
     );
