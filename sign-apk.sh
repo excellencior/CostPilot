@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-ANDROID_SDK_PATH="/home/apurboturjo/My/data/AndroidSdk"
+ANDROID_SDK_PATH="/home/apurboturjo/Android/Sdk"
 KEYSTORE_FILE="release-key.jks"
 ALIAS_NAME="costpilot"
 BUILD_OUTPUT_DIR="android/app/build/outputs/apk/release"
@@ -45,6 +45,13 @@ if [[ "$JAVA_VER_FULL" == *"1.8"* ]]; then
     exit 1
 fi
 echo "Java Version: $JAVA_VER_FULL"
+
+# Setup Node.js (via NVM)
+export NVM_DIR="$HOME/.nvm"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+    \. "$NVM_DIR/nvm.sh"
+    nvm use 20
+fi
 
 # 3. Build the project
 echo "Starting production build..."

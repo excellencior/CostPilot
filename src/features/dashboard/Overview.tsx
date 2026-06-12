@@ -259,8 +259,6 @@ const Overview: React.FC<OverviewProps> = ({ month, transactions, onBack, onTran
                               <p className="font-semibold text-stone-900 dark:text-white truncate">{t.title}</p>
                               <div className="flex items-center gap-2 mt-0.5">
                                 <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider font-brand-accent">{t.category.name}</span>
-                                <span className="text-[8px] text-stone-300 dark:text-stone-700 font-black">•</span>
-                                <span className="text-[10px] font-medium text-stone-400 dark:text-stone-500 uppercase tracking-wider">{formatDate(t.date)}</span>
                               </div>
                             </div>
                             <div className="text-right">

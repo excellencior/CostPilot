@@ -251,8 +251,6 @@ const History: React.FC<HistoryProps> = ({ transactions, onTransactionClick, onD
                                                         <p className="font-semibold text-stone-900 dark:text-white truncate">{t.title}</p>
                                                         <div className="flex items-center gap-2 mt-0.5">
                                                             <span className="text-[10px] text-stone-500 dark:text-stone-400 font-bold uppercase tracking-wider font-brand-accent">{t.category.name}</span>
-                                                            <span className="text-[8px] text-stone-300 dark:text-stone-700 font-black">•</span>
-                                                            <span className="text-[10px] text-stone-400 dark:text-stone-500 font-medium uppercase tracking-wider">{formatDate(t.date)}</span>
                                                         </div>
                                                     </div>
                                                     <div className={`font-bold text-lg ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-900 dark:text-white'}`}>
