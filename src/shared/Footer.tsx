@@ -19,7 +19,10 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                     <span className="material-symbols-outlined text-xs">verified_user</span>
                     <span>Your data stays on your device</span>
                 </div>
-                <p className="text-[10px] text-stone-400 dark:text-stone-500 mt-2 font-medium tracking-widest uppercase italic">
+                <p className="text-[10px] text-[#AF8F42]/80 dark:text-[#D4AF37]/80 mt-2 font-bold tracking-wider uppercase">
+                    Easy version of the full APK
+                </p>
+                <p className="text-[10px] text-stone-400 dark:text-stone-500 mt-1 font-medium tracking-widest uppercase italic">
                     Designed for visual clarity
                 </p>
                 <div className="flex items-center gap-4 mt-4 text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">

@@ -558,18 +558,34 @@ const Settings: React.FC<SettingsProps> = ({
 					<h2 className="text-2xl font-bold font-brand-title brand-gradient">Settings</h2>
 					<p className="text-stone-400 text-xs">Manage your preferences and data.</p>
 				</div>
-				<button
-					onClick={toggleDarkMode}
-					className="size-10 rounded-xl bg-brand-surface-light dark:bg-brand-surface-dark border border-[#AF8F42]/30 dark:border-[#AF8F42]/40 flex items-center justify-center text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800 transition-all active:scale-95 shadow-sm"
-					title="Toggle Dark Mode"
-				>
-					<span className="material-symbols-outlined text-[20px]">
-						{isDark ? 'light_mode' : 'dark_mode'}
-					</span>
-				</button>
 			</div>
 
 			<div className="space-y-5">
+				{/* Theme Highlight Card */}
+				<div className="card-section p-5 relative overflow-hidden group border border-[#AF8F42]/30 dark:border-[#AF8F42]/40 bg-gradient-to-r from-stone-50 to-white dark:from-stone-900/50 dark:to-stone-900/20">
+					<div className="absolute -top-10 -right-10 size-32 bg-gradient-to-br from-[#AF8F42] to-[#D4AF37] opacity-15 rounded-full blur-2xl group-hover:opacity-25 transition-opacity duration-700"></div>
+					<div className="flex flex-col sm:flex-row items-center justify-between gap-4 relative z-10">
+						<div className="flex items-center gap-3 text-left w-full sm:w-auto">
+							<div className="size-10 rounded-xl bg-[#AF8F42]/10 flex items-center justify-center text-[#AF8F42] shrink-0">
+								<span className="material-symbols-outlined">{isDark ? 'dark_mode' : 'light_mode'}</span>
+							</div>
+							<div>
+								<h3 className="font-bold text-stone-900 dark:text-white text-sm">App Appearance</h3>
+								<p className="text-stone-400 text-[11px] mt-0.5">Switch between dark mode and light mode.</p>
+							</div>
+						</div>
+						
+						<button
+							onClick={toggleDarkMode}
+							className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#AF8F42] to-[#D4AF37] hover:from-[#c2a153] hover:to-[#e6c24c] text-stone-950 font-bold shadow-lg shadow-[#AF8F42]/20 hover:shadow-[#AF8F42]/30 transition-all duration-300 active:scale-95 flex items-center justify-center gap-2 group shrink-0"
+						>
+							<span className="material-symbols-outlined text-lg animate-pulse">
+								{isDark ? 'light_mode' : 'dark_mode'}
+							</span>
+							<span>Switch to {isDark ? 'Light' : 'Dark'} Mode</span>
+						</button>
+					</div>
+				</div>
 
 				{/* Data Exports */}
 				<div className="card-section p-4 space-y-4 md:col-span-2">
@@ -707,20 +723,6 @@ const Settings: React.FC<SettingsProps> = ({
 				</div>
 			</div>
 
-			{/* Web Version Link - Only show on APK */}
-			{Capacitor.isNativePlatform() && (
-				<div className="card-section p-4 flex justify-center">
-					<a
-						href="https://cost-pilot-xi.vercel.app"
-						target="_blank"
-						rel="noopener noreferrer"
-						className="text-[10px] font-bold text-stone-400 hover:text-[#AF8F42] dark:hover:text-[#AF8F42] uppercase tracking-widest transition-colors flex items-center gap-1.5 group"
-					>
-						<span className="material-symbols-outlined text-sm group-hover:rotate-12 transition-transform">language</span>
-						Go to Web Version
-					</a>
-				</div>
-			)}
 
 			<ConfirmModal
 				isOpen={showOverwriteConfirm}
