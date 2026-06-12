@@ -27,7 +27,12 @@ export interface LocalCategory extends Category {
 const getRawData = (key: string): Record<string, any> => {
     try {
         const data = localStorage.getItem(key);
-        return data ? JSON.parse(data) : {};
+        if (!data) return {};
+        const parsed = JSON.parse(data);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            return parsed;
+        }
+        return {};
     } catch {
         return {};
     }
@@ -67,7 +72,7 @@ export const LocalRepository = {
         monthKeys.forEach(key => {
             const data = getRawData(key);
             Object.values(data).forEach((item: any) => {
-                if (!item.deleted) {
+                if (item && typeof item === 'object' && !item.deleted) {
                     allExpenses.push(item);
                 }
             });
@@ -100,7 +105,7 @@ export const LocalRepository = {
         monthKeys.forEach(key => {
             const data = getRawData(key);
             Object.values(data).forEach((item: any) => {
-                if (!item.is_synced) {
+                if (item && typeof item === 'object' && !item.is_synced) {
                     pending.push(item);
                 }
             });
@@ -174,12 +179,12 @@ export const LocalRepository = {
     // --- CATEGORIES ---
     getAllCategories: (): LocalCategory[] => {
         const data = getRawData(CATEGORY_KEY);
-        return Object.values(data).filter((item: any) => !item.deleted);
+        return Object.values(data).filter((item: any) => item && typeof item === 'object' && !item.deleted);
     },
 
     getPendingSyncCategories: (): LocalCategory[] => {
         const data = getRawData(CATEGORY_KEY);
-        return Object.values(data).filter((item: any) => !item.is_synced);
+        return Object.values(data).filter((item: any) => item && typeof item === 'object' && !item.is_synced);
     },
 
     upsertCategory: (category: Omit<LocalCategory, 'updated_at' | 'created_at' | 'is_synced' | 'deleted'> & Partial<LocalCategory>) => {
@@ -310,7 +315,7 @@ export const LocalRepository = {
         monthKeys.forEach(key => {
             const expData = getRawData(key);
             Object.values(expData).forEach((item: any) => {
-                if (!item.user_id) {
+                if (item && typeof item === 'object' && !item.user_id) {
                     item.user_id = userId;
                     item.updated_at = new Date().toISOString();
                     item.is_synced = false;
@@ -321,7 +326,7 @@ export const LocalRepository = {
 
         const catData = getRawData(CATEGORY_KEY);
         Object.values(catData).forEach((item: any) => {
-            if (!item.user_id) {
+            if (item && typeof item === 'object' && !item.user_id) {
                 item.user_id = userId;
                 item.updated_at = new Date().toISOString();
                 item.is_synced = false;
@@ -350,7 +355,7 @@ export const LocalRepository = {
     // --- BUDGETS ---
     getBudgetPlans: (): { id: string; name: string; amount: number }[] => {
         const data = getRawData(BUDGET_PLANS_KEY);
-        return Object.values(data);
+        return Object.values(data).filter((item: any) => item && typeof item === 'object');
     },
 
     upsertBudgetPlan: (plan: { id: string; name: string; amount: number }) => {
@@ -410,7 +415,7 @@ export const LocalRepository = {
         let expense = 0;
         let count = 0;
         Object.values(data).forEach((item: any) => {
-            if (!item.deleted) {
+            if (item && typeof item === 'object' && !item.deleted) {
                 count++;
                 if (item.type === 'income') income += item.amount;
                 else expense += item.amount;
@@ -449,25 +454,27 @@ export const LocalRepository = {
         const oldDataStr = localStorage.getItem('costpilot_local_db');
         if (oldDataStr) {
             const oldData = JSON.parse(oldDataStr);
-            const groups: Record<string, Record<string, any>> = {};
-            
-            Object.values(oldData).forEach((item: any) => {
-                if (item && item.id) {
-                    const dateStr = item.date || '';
-                    const monthKey = dateStr.substring(0, 7) || new Date().toISOString().substring(0, 7);
-                    const storageKey = `costpilot_local_db_${monthKey}`;
-                    if (!groups[storageKey]) {
-                        groups[storageKey] = {};
+            if (oldData && typeof oldData === 'object' && !Array.isArray(oldData)) {
+                const groups: Record<string, Record<string, any>> = {};
+                
+                Object.values(oldData).forEach((item: any) => {
+                    if (item && typeof item === 'object' && item.id) {
+                        const dateStr = item.date || '';
+                        const monthKey = dateStr.substring(0, 7) || new Date().toISOString().substring(0, 7);
+                        const storageKey = `costpilot_local_db_${monthKey}`;
+                        if (!groups[storageKey]) {
+                            groups[storageKey] = {};
+                        }
+                        groups[storageKey][item.id] = item;
                     }
-                    groups[storageKey][item.id] = item;
-                }
-            });
+                });
 
-            Object.entries(groups).forEach(([key, data]) => {
-                const existing = getRawData(key);
-                const merged = { ...existing, ...data };
-                saveRawData(key, merged);
-            });
+                Object.entries(groups).forEach(([key, data]) => {
+                    const existing = getRawData(key);
+                    const merged = { ...existing, ...data };
+                    saveRawData(key, merged);
+                });
+            }
 
             localStorage.setItem('costpilot_local_db_migrated', oldDataStr);
             localStorage.removeItem('costpilot_local_db');

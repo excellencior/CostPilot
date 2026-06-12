@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { formatDate } from '../../entities/financial';
+import { formatDate, getMonthName } from '../../entities/financial';
+import { useLanguage } from '../../application/contexts/LanguageContext';
 
 interface DatePickerProps {
     value: string;
@@ -15,6 +16,7 @@ const DatePicker: React.FC<DatePickerProps> = ({
     label,
     className = ''
 }) => {
+    const { language } = useLanguage();
     const [isOpen, setIsOpen] = useState(false);
     const [viewMode, setViewMode] = useState<'days' | 'months' | 'years'>('days');
     const containerRef = useRef<HTMLDivElement>(null);
@@ -166,23 +168,34 @@ const DatePicker: React.FC<DatePickerProps> = ({
         );
     };
 
+    const activeRef = (el: HTMLButtonElement | null) => {
+        if (el && el.parentElement) {
+            const container = el.parentElement;
+            container.scrollTop = el.offsetTop - (container.clientHeight / 2) + (el.clientHeight / 2);
+        }
+    };
+
     const renderMonths = () => {
-        const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        const monthIndices = Array.from({ length: 12 }, (_, i) => i);
         return (
             <div className="max-h-[220px] overflow-y-auto px-1 space-y-1 custom-scrollbar">
-                {months.map((m, i) => (
-                    <button
-                        key={m}
-                        type="button"
-                        onClick={() => handleMonthSelect(i)}
-                        className={`w-full py-3 text-sm font-bold rounded-xl transition-all ${viewDate.getMonth() === i
-                            ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/30'
-                            : 'bg-stone-50 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700'
-                            }`}
-                    >
-                        {m}
-                    </button>
-                ))}
+                {monthIndices.map((i) => {
+                    const mName = getMonthName(i, language === 'bn');
+                    return (
+                        <button
+                            key={i}
+                            type="button"
+                            ref={viewDate.getMonth() === i ? activeRef : null}
+                            onClick={() => handleMonthSelect(i)}
+                            className={`w-full py-3 text-sm font-bold rounded-xl transition-all ${viewDate.getMonth() === i
+                                ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/30'
+                                : 'bg-stone-50 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700'
+                                }`}
+                        >
+                            {mName}
+                        </button>
+                    );
+                })}
             </div>
         );
     };
@@ -201,6 +214,7 @@ const DatePicker: React.FC<DatePickerProps> = ({
                     <button
                         key={y}
                         type="button"
+                        ref={viewDate.getFullYear() === y ? activeRef : null}
                         onClick={() => handleYearSelect(y)}
                         className={`w-full py-3 text-sm font-bold rounded-xl transition-all ${viewDate.getFullYear() === y
                             ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/30'
@@ -213,8 +227,6 @@ const DatePicker: React.FC<DatePickerProps> = ({
             </div>
         );
     };
-
-    const monthName = viewDate.toLocaleString('default', { month: 'long' });
 
     const modalContent = isOpen ? (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -244,7 +256,9 @@ const DatePicker: React.FC<DatePickerProps> = ({
                                 : 'bg-stone-50 dark:bg-stone-800/50 border-stone-100 dark:border-stone-800 text-stone-900 dark:text-white hover:border-primary-500'
                                 }`}
                         >
-                            {viewDate.toLocaleString('default', { month: 'short' })}
+                            {(language === 'bn'
+                                ? ["জানু", "ফেব্রু", "মার্চ", "এপ্রিল", "মে", "জুন", "জুলাই", "আগস্ট", "সেপ্টে", "অক্টো", "নভে", "ডিসে"]
+                                : ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"])[viewDate.getMonth()]}
                         </button>
                         <button
                             type="button"
@@ -313,7 +327,7 @@ const DatePicker: React.FC<DatePickerProps> = ({
             >
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                     <span className={`truncate whitespace-nowrap ${value ? 'text-stone-900 dark:text-white' : 'text-stone-400 font-normal'}`}>
-                        {value ? formatDate(value) : label}
+                        {value ? formatDate(value, language) : label}
                     </span>
                 </div>
             </button>

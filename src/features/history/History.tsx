@@ -336,7 +336,7 @@ const History: React.FC<HistoryProps> = ({ onTransactionClick, onDeleteTransacti
         const sortedDateKeys = Object.keys(grouped).sort().reverse();
 
         // All transactions in this month for lookup
-        const monthTransactionMap = new Map(data.transactions.map(t => [t.id, t]));
+        const monthTransactionMap = new Map(data.transactions.map(tx => [tx.id, tx]));
         const selectedTransactions = Array.from(selectedIds).map(id => monthTransactionMap.get(id)).filter(Boolean) as Transaction[];
 
         return (
@@ -392,6 +392,12 @@ const History: React.FC<HistoryProps> = ({ onTransactionClick, onDeleteTransacti
                         <p className="text-sm text-stone-500 dark:text-stone-400">{t('ledger.detailed_desc')}</p>
                     </div>
                     <div className="flex items-center gap-4 text-right">
+                        <div>
+                            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">{t('ledger.net_savings')}</p>
+                            <p className={`text-xl font-bold ${data.savings >= 0 ? 'text-green-600' : 'text-rose-600'}`}>
+                                {data.savings >= 0 ? '+' : ''}{currencySymbol}{formatAmount(data.savings)}
+                            </p>
+                        </div>
                         {data.source === 'local' && selectedMonthKey !== `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}` && (
                             <button
                                 onClick={handlePurgeMonth}
@@ -402,12 +408,6 @@ const History: React.FC<HistoryProps> = ({ onTransactionClick, onDeleteTransacti
                                 {language === 'bn' ? 'আর্কাইভ (মেমরি খালি করুন)' : 'Archive (Free Space)'}
                             </button>
                         )}
-                        <div>
-                            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">{t('ledger.net_savings')}</p>
-                            <p className={`text-xl font-bold ${data.savings >= 0 ? 'text-green-600' : 'text-rose-600'}`}>
-                                {data.savings >= 0 ? '+' : ''}{currencySymbol}{formatAmount(data.savings)}
-                            </p>
-                        </div>
                     </div>
                 </header>
 
@@ -433,30 +433,30 @@ const History: React.FC<HistoryProps> = ({ onTransactionClick, onDeleteTransacti
                                 </div>
 
                                 <div className="flex flex-col gap-2.5">
-                                    {dayTransactions.map((t) => {
-                                        const isSelected = selectedIds.has(t.id);
+                                    {dayTransactions.map((tx) => {
+                                        const isSelected = selectedIds.has(tx.id);
                                         return (
                                             /* Relative wrapper for overlay checkbox */
-                                            <div key={t.id} className="relative">
+                                            <div key={tx.id} className="relative">
                                                 <button
-                                                    onClick={() => isSelectMode ? toggleId(t.id) : onTransactionClick(t)}
+                                                    onClick={() => isSelectMode ? toggleId(tx.id) : onTransactionClick(tx)}
                                                     className={`w-full flex items-center gap-4 p-3 bg-brand-surface-light dark:bg-brand-surface-dark rounded-xl border transition-all duration-200 ease-out text-left active:scale-[0.99]
                                                         ${isSelected
                                                             ? 'border-primary-500 dark:border-primary-500 shadow-md shadow-primary-500/10'
                                                             : 'border-[#AF8F42]/30 dark:border-[#AF8F42]/40 hover:border-[#AF8F42]/60 hover:shadow-xl hover:shadow-[#AF8F42]/10'
                                                         }`}
                                                 >
-                                                    <div className={`size-12 rounded-lg flex items-center justify-center shrink-0 ${t.type === 'income' ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'}`}>
-                                                        <span className="material-symbols-outlined text-2xl">{t.type === 'income' ? 'trending_up' : 'payments'}</span>
+                                                    <div className={`size-12 rounded-lg flex items-center justify-center shrink-0 ${tx.type === 'income' ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'}`}>
+                                                        <span className="material-symbols-outlined text-2xl">{tx.type === 'income' ? 'trending_up' : 'payments'}</span>
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <p className="font-semibold text-stone-900 dark:text-white truncate">{t.title}</p>
+                                                        <p className="font-semibold text-stone-900 dark:text-white truncate">{tx.title}</p>
                                                         <div className="flex items-center gap-2 mt-0.5">
-                                                            <span className={`text-[10px] font-extrabold uppercase tracking-widest leading-none ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-500 dark:text-stone-400'}`}>{t.type === 'income' ? t('common.income') : t('common.expense')}</span>
+                                                            <span className={`text-[10px] font-extrabold uppercase tracking-widest leading-none ${tx.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-500 dark:text-stone-400'}`}>{tx.type === 'income' ? t('common.income') : t('common.expense')}</span>
                                                         </div>
                                                     </div>
-                                                    <div className={`font-bold text-lg ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-900 dark:text-white'}`}>
-                                                        {t.type === 'income' ? '+' : '-'}{currencySymbol}{formatAmount(t.amount)}
+                                                    <div className={`font-bold text-lg ${tx.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-900 dark:text-white'}`}>
+                                                        {tx.type === 'income' ? '+' : '-'}{currencySymbol}{formatAmount(tx.amount)}
                                                     </div>
                                                 </button>
 
@@ -494,17 +494,17 @@ const History: React.FC<HistoryProps> = ({ onTransactionClick, onDeleteTransacti
                     variant="danger"
                     extraContent={
                         <div className="mt-2 space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                            {selectedTransactions.map(t => (
-                                <div key={t.id} className="flex items-center gap-2.5 p-2 rounded-lg bg-stone-50 dark:bg-stone-800/60 text-left">
-                                    <div className={`size-7 rounded-md flex items-center justify-center shrink-0 ${t.type === 'expense' ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400' : 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'}`}>
-                                        <span className="material-symbols-outlined text-[16px]">{t.type === 'income' ? 'trending_up' : 'payments'}</span>
+                            {selectedTransactions.map(tx => (
+                                <div key={tx.id} className="flex items-center gap-2.5 p-2 rounded-lg bg-stone-50 dark:bg-stone-800/60 text-left">
+                                    <div className={`size-7 rounded-md flex items-center justify-center shrink-0 ${tx.type === 'expense' ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400' : 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'}`}>
+                                        <span className="material-symbols-outlined text-[16px]">{tx.type === 'income' ? 'trending_up' : 'payments'}</span>
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-semibold text-stone-900 dark:text-white truncate">{t.title}</p>
-                                        <p className="text-[10px] text-stone-400 uppercase tracking-wide">{t.type === 'income' ? t('common.income') : t('common.expense')}</p>
+                                        <p className="text-xs font-semibold text-stone-900 dark:text-white truncate">{tx.title}</p>
+                                        <p className="text-[10px] text-stone-400 uppercase tracking-wide">{tx.type === 'income' ? t('common.income') : t('common.expense')}</p>
                                     </div>
-                                    <span className={`text-xs font-bold tabular-nums ${t.type === 'expense' ? 'text-stone-700 dark:text-stone-300' : 'text-green-600 dark:text-green-400'}`}>
-                                        {t.type === 'expense' ? '-' : '+'}{currencySymbol}{formatAmount(t.amount)}
+                                    <span className={`text-xs font-bold tabular-nums ${tx.type === 'expense' ? 'text-stone-700 dark:text-stone-300' : 'text-green-600 dark:text-green-400'}`}>
+                                        {tx.type === 'expense' ? '-' : '+'}{currencySymbol}{formatAmount(tx.amount)}
                                     </span>
                                 </div>
                             ))}
@@ -603,42 +603,33 @@ const History: React.FC<HistoryProps> = ({ onTransactionClick, onDeleteTransacti
                     <div className="space-y-4 animate-scale-in" >
                         <div className="flex items-center justify-between px-1">
                             <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">
-                                {t('ledger.found_matches', { count: filteredResults.length })}
+                                {t('ledger.search_results')} ({filteredResults.length})
                             </p>
-                            {searchQuery && (
-                                <button
-                                    onClick={() => { setSearchQuery(''); }}
-                                    className="text-[10px] font-bold text-primary-600 uppercase tracking-widest hover:underline"
-                                >
-                                    {t('overview.clear')}
-                                </button>
-                            )}
                         </div>
-
-                        <div className="flex flex-col gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {filteredResults.length > 0 ? (
-                                filteredResults.map((t) => (
+                                filteredResults.map((tx) => (
                                     <button
-                                        key={t.id}
-                                        onClick={() => onTransactionClick(t)}
+                                        key={tx.id}
+                                        onClick={() => onTransactionClick(tx)}
                                         className="flex items-center gap-4 p-3 md:p-3.5 bg-brand-surface-light dark:bg-brand-surface-dark rounded-xl border border-[#AF8F42]/30 dark:border-[#AF8F42]/40 hover:border-[#AF8F42]/60 transition-all duration-500 ease-out hover:shadow-xl hover:shadow-[#AF8F42]/10 group text-left shadow-sm active:scale-[0.99]"
                                     >
-                                        <div className={`size-12 rounded-lg flex items-center justify-center shrink-0 ${t.type === 'income'
+                                        <div className={`size-12 rounded-lg flex items-center justify-center shrink-0 ${tx.type === 'income'
                                             ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400'
                                             : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'
                                             }`}>
-                                            <span className="material-symbols-outlined text-2xl">{t.type === 'income' ? 'trending_up' : 'payments'}</span>
+                                            <span className="material-symbols-outlined text-2xl">{tx.type === 'income' ? 'trending_up' : 'payments'}</span>
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="font-semibold text-stone-900 dark:text-white truncate">{t.title}</p>
+                                            <p className="font-semibold text-stone-900 dark:text-white truncate">{tx.title}</p>
                                             <div className="flex items-center gap-2 mt-0.5">
-                                                <span className={`text-[10px] font-extrabold uppercase tracking-widest leading-none ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-500 dark:text-stone-400'}`}>{t.type === 'income' ? t('common.income') : t('common.expense')}</span>
+                                                <span className={`text-[10px] font-extrabold uppercase tracking-widest leading-none ${tx.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-500 dark:text-stone-400'}`}>{tx.type === 'income' ? t('common.income') : t('common.expense')}</span>
                                                 <span className="text-[8px] text-stone-300 dark:text-stone-700 font-black leading-none">•</span>
-                                                <span className="text-[10px] text-stone-400 dark:text-stone-500 font-medium uppercase tracking-wider leading-none">{formatDate(t.date, language === 'bn' ? 'bn' : 'en')}</span>
+                                                <span className="text-[10px] text-stone-400 dark:text-stone-500 font-medium uppercase tracking-wider leading-none">{formatDate(tx.date, language === 'bn' ? 'bn' : 'en')}</span>
                                             </div>
                                         </div>
-                                        <div className={`font-bold text-lg ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-900 dark:text-white'}`}>
-                                            {t.type === 'income' ? '+' : '-'}{currencySymbol}{formatAmount(t.amount)}
+                                        <div className={`font-bold text-lg ${tx.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-900 dark:text-white'}`}>
+                                            {tx.type === 'income' ? '+' : '-'}{currencySymbol}{formatAmount(tx.amount)}
                                         </div>
                                     </button>
                                 ))

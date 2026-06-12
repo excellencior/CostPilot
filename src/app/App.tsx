@@ -19,7 +19,7 @@ import { LocalBackupProvider } from '../application/contexts/LocalBackupContext'
 import { LanguageProvider } from '../application/contexts/LanguageContext';
 import Layout from '../shared/Layout';
 import { Toaster, toast } from 'react-hot-toast';
-import { getCurrencySymbol } from '../entities/financial';
+import { getCurrencySymbol, getMonthIndex } from '../entities/financial';
 import { Preferences } from '@capacitor/preferences';
 
 const generateId = () => {
@@ -256,8 +256,8 @@ const AppContent: React.FC = () => {
 
     const getMonthTransactions = (monthData: MonthlyData) => {
         if (!monthData) return [];
-        const dateObj = new Date(`${monthData.month} 1, ${monthData.year}`);
-        const monthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+        const monthIdx = getMonthIndex(monthData.month);
+        const monthKey = `${monthData.year}-${String(monthIdx + 1).padStart(2, '0')}`;
         return LocalRepository.getExpensesForMonth(monthKey) as Transaction[];
     };
 

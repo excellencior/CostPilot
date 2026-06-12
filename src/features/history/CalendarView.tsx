@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Transaction, Category } from '../../entities/types';
-import { formatCompactNumber } from '../../entities/financial';
+import { formatCompactNumber, formatAmount } from '../../entities/financial';
 import { useLanguage } from '../../application/contexts/LanguageContext';
 import { LocalRepository } from '../../infrastructure/local/local-repository';
 
@@ -285,29 +285,29 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                         </div>
                         
                         <div className="overflow-y-auto p-4 space-y-3 custom-scrollbar">
-                            {selectedDayData.transactions.length > 0 ? selectedDayData.transactions.map((t) => (
+                            {selectedDayData.transactions.length > 0 ? selectedDayData.transactions.map((tx) => (
                                 <button
-                                    key={t.id}
+                                    key={tx.id}
                                     onClick={() => {
                                         setSelectedDayData(null);
-                                        onTransactionClick(t);
+                                        onTransactionClick(tx);
                                     }}
                                     className="w-full flex items-center gap-3 p-3 bg-white dark:bg-stone-800/50 rounded-xl border border-stone-100 dark:border-stone-700/50 hover:border-[#AF8F42]/30 dark:hover:border-[#AF8F42]/30 transition-all text-left shadow-sm active:scale-[0.98]"
                                 >
-                                    <div className={`size-10 rounded-lg flex items-center justify-center shrink-0 ${t.type === 'income'
+                                    <div className={`size-10 rounded-lg flex items-center justify-center shrink-0 ${tx.type === 'income'
                                         ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400'
                                         : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'
                                         }`}>
-                                        <span className="material-symbols-outlined text-xl">{t.type === 'income' ? 'trending_up' : 'payments'}</span>
+                                        <span className="material-symbols-outlined text-xl">{tx.type === 'income' ? 'trending_up' : 'payments'}</span>
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="font-bold text-sm text-stone-900 dark:text-white truncate">{t.title}</p>
+                                        <p className="font-bold text-sm text-stone-900 dark:text-white truncate">{tx.title}</p>
                                         <div className="flex items-center gap-1.5 mt-0.5">
-                                            <span className={`text-[9px] font-extrabold uppercase tracking-widest leading-none ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-500 dark:text-stone-400'}`}>{t.type === 'income' ? t('common.income') : t('common.expense')}</span>
+                                            <span className={`text-[9px] font-extrabold uppercase tracking-widest leading-none ${tx.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-500 dark:text-stone-400'}`}>{tx.type === 'income' ? t('common.income') : t('common.expense')}</span>
                                         </div>
                                     </div>
-                                    <div className={`font-bold text-base whitespace-nowrap ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-900 dark:text-white'}`}>
-                                        {t.type === 'income' ? '+' : '-'}{currencySymbol}{t.amount.toLocaleString()}
+                                    <div className={`font-bold text-base whitespace-nowrap ${tx.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-900 dark:text-white'}`}>
+                                        {tx.type === 'income' ? '+' : '-'}{currencySymbol}{formatAmount(tx.amount)}
                                     </div>
                                 </button>
                             )) : (

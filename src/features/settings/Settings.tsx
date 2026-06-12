@@ -6,7 +6,7 @@ import { Share } from '@capacitor/share';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { LocalRepository } from '../../infrastructure/local/local-repository';
-import { formatDate } from '../../entities/financial';
+import { formatDate, formatAmount } from '../../entities/financial';
 import Dropdown from '../../shared/ui/Dropdown';
 import DatePicker from '../../shared/ui/DatePicker';
 import TimePicker, { TimePickerHandle } from '../../shared/ui/TimePicker';
@@ -187,9 +187,9 @@ const Settings: React.FC<SettingsProps> = ({
 				startY: currentY,
 				head: [['Summary', `Amount (${currencyCode})`]],
 				body: [
-					['Total Income', `${currencyCode} ${income.toLocaleString()}`],
-					['Total Expense', `${currencyCode} ${expense.toLocaleString()}`],
-					['Net Balance', `${currencyCode} ${balance.toLocaleString()}`]
+					['Total Income', `${currencyCode} ${formatAmount(income)}`],
+					['Total Expense', `${currencyCode} ${formatAmount(expense)}`],
+					['Net Balance', `${currencyCode} ${formatAmount(balance)}`]
 				],
 				theme: 'plain',
 				headStyles: {
@@ -224,11 +224,11 @@ const Settings: React.FC<SettingsProps> = ({
 			});
 
 			// --- Transactions table ---
-			const tableData = filteredTransactions.map(t => {
+			const tableData = filteredTransactions.map(tx => {
 				return [
-					formatDate(t.date),
-					t.title || 'Untitled',
-					t.type === 'expense' ? `-${currencyCode} ${t.amount.toLocaleString()}` : `+${currencyCode} ${t.amount.toLocaleString()}`
+					formatDate(tx.date, language),
+					tx.title || 'Untitled',
+					tx.type === 'expense' ? `-${currencyCode} ${formatAmount(tx.amount)}` : `+${currencyCode} ${formatAmount(tx.amount)}`
 				];
 			});
 
@@ -339,15 +339,15 @@ const Settings: React.FC<SettingsProps> = ({
 			}
 
 			const headers = ['Date', 'Title', 'Type', 'Amount', 'Currency', 'Location'];
-			const rows = filteredTransactions.map(t => {
-				const safeTitle = (t.title || '').replace(/"/g, '""');
-				const safeLocation = (t.location || '').replace(/"/g, '""');
+			const rows = filteredTransactions.map(tx => {
+				const safeTitle = (tx.title || '').replace(/"/g, '""');
+				const safeLocation = (tx.location || '').replace(/"/g, '""');
 
 				return [
-					t.date,
+					tx.date,
 					`"${safeTitle}"`,
-					t.type,
-					t.amount,
+					tx.type,
+					tx.amount,
 					currency,
 					`"${safeLocation}"`
 				];
@@ -521,26 +521,26 @@ const Settings: React.FC<SettingsProps> = ({
 				variant="primary"
 				extraContent={
 					<div className="max-h-96 overflow-y-auto space-y-2 mt-6 px-1 custom-scrollbar">
-						{mergedEntries.map((t, i) => (
+						{mergedEntries.map((tx, i) => (
 							<div
 								key={i}
 								className="w-full card p-3 md:p-4 flex items-center gap-3 md:gap-4 border border-[#AF8F42]/30 dark:border-[#AF8F42]/40 transition-all duration-500 ease-out text-left"
 							>
-								<div className={`size-12 rounded-lg flex items-center justify-center shrink-0 ${t.type === 'income' ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'
+								<div className={`size-12 rounded-lg flex items-center justify-center shrink-0 ${tx.type === 'income' ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'
 									}`}>
-									<span className="material-symbols-outlined text-2xl">{t.type === 'income' ? 'trending_up' : 'payments'}</span>
+									<span className="material-symbols-outlined text-2xl">{tx.type === 'income' ? 'trending_up' : 'payments'}</span>
 								</div>
 								<div className="flex-1 text-left min-w-0">
-									<p className="font-bold text-stone-900 dark:text-white truncate tracking-tight">{t.title || t('settings.backup.untitled')}</p>
+									<p className="font-bold text-stone-900 dark:text-white truncate tracking-tight">{tx.title || t('settings.backup.untitled')}</p>
 									<div className="flex flex-col mt-0.5">
-										<span className={`text-[10px] font-extrabold uppercase tracking-widest leading-none ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-500 dark:text-stone-400'}`}>{t.type === 'income' ? t('common.income') : t('common.expense')}</span>
+										<span className={`text-[10px] font-extrabold uppercase tracking-widest leading-none ${tx.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-500 dark:text-stone-400'}`}>{tx.type === 'income' ? t('common.income') : t('common.expense')}</span>
 										<span className="text-[9px] font-medium text-stone-400 dark:text-stone-500 uppercase tracking-wider leading-none mt-1">
-											{formatDate(t.date)}
+											{formatDate(tx.date, language)}
 										</span>
 									</div>
 								</div>
-								<div className={`font-bold text-base md:text-lg ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-900 dark:text-white'}`}>
-									{t.type === 'income' ? '+' : '-'}{symbol}{t.amount.toLocaleString()}
+								<div className={`font-bold text-base md:text-lg ${tx.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-900 dark:text-white'}`}>
+									{tx.type === 'income' ? '+' : '-'}{symbol}{formatAmount(tx.amount)}
 								</div>
 							</div>
 						))}

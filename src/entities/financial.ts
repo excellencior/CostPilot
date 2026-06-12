@@ -43,3 +43,38 @@ export const formatCompactNumber = (number: number) => {
 export const getCurrencySymbol = (code: string) => {
     return '৳';
 };
+
+export const formatAmount = (num: number): string => {
+    if (num === null || num === undefined || isNaN(num)) return '0';
+    try {
+        return num.toLocaleString('en-US');
+    } catch {
+        const parts = num.toString().split('.');
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        return parts.join('.');
+    }
+};
+
+const MONTHS_MAP: Record<string, number> = {
+    january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
+    july: 6, august: 7, september: 8, october: 9, november: 10, december: 11
+};
+
+export const getMonthIndex = (monthName: string): number => {
+    if (!monthName) return 0;
+    return MONTHS_MAP[monthName.toLowerCase()] ?? 0;
+};
+
+export const getMonthName = (monthIndex: number, isBengali: boolean): string => {
+    const monthsEn = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ];
+    const monthsBn = [
+        "জানুয়ারি", "ফেব্রুয়ারি", "মার্চ", "এপ্রিল", "মে", "জুন",
+        "জুলাই", "আগস্ট", "সেপ্টেম্বর", "অক্টোবর", "নভেম্বর", "ডিসেম্বর"
+    ];
+    const index = Math.max(0, Math.min(11, Math.floor(monthIndex)));
+    return isBengali ? monthsBn[index] : monthsEn[index];
+};
+

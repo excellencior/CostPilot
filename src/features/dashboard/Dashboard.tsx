@@ -6,7 +6,7 @@ import BudgetModal from './BudgetModal';
 import { INSPIRATIONAL_QUOTES, BN_INSPIRATIONAL_QUOTES } from '../../quotes';
 import { Preferences } from '@capacitor/preferences';
 import { LocalRepository } from '../../infrastructure/local/local-repository';
-import { getCurrencySymbol } from '../../entities/financial';
+import { getCurrencySymbol, formatAmount, getMonthIndex, getMonthName } from '../../entities/financial';
 import { useLanguage } from '../../application/contexts/LanguageContext';
 
 interface DashboardProps {
@@ -34,9 +34,13 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   // Filter transactions for the current focused month only
   const currentMonthTransactions = transactions.filter(t => {
-    const d = new Date(t.date);
-    return d.toLocaleString('en-US', { month: 'long' }) === currentMonth.month &&
-      d.getFullYear() === currentMonth.year;
+    if (!t.date) return false;
+    const parts = t.date.split('-');
+    if (parts.length < 2) return false;
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    const targetMonthIndex = getMonthIndex(currentMonth.month);
+    return year === currentMonth.year && month === (targetMonthIndex + 1);
   });
 
   const recentTransactions = currentMonthTransactions.slice(0, 4);
@@ -75,12 +79,8 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   const getLocalizedMonth = useCallback((monthName: string, year: number) => {
     if (monthName === 'Unknown') return monthName;
-    try {
-      const date = new Date(`${monthName} 1, ${year}`);
-      return date.toLocaleString(language === 'bn' ? 'bn-BD' : 'en-US', { month: 'long' });
-    } catch {
-      return monthName;
-    }
+    const monthIndex = getMonthIndex(monthName);
+    return getMonthName(monthIndex, language === 'bn');
   }, [language]);
 
   const budgetQuoteIndex = useMemo(() => Math.floor(Math.random() * 5), [monthlyBudget]);
@@ -119,7 +119,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             </p>
 
             {hasEntries ? (
-              <h3 className="text-4xl md:text-6xl font-black tracking-tight">{currencySymbol}{balance.toLocaleString()}</h3>
+              <h3 className="text-4xl md:text-6xl font-black tracking-tight">{currencySymbol}{formatAmount(balance)}</h3>
             ) : (
               <div className="space-y-4">
                 <h3 className="text-3xl md:text-5xl font-light tracking-tight leading-tight">
@@ -144,7 +144,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <div className="text-left">
                   <p className="text-[9px] font-black text-white/50 uppercase tracking-widest leading-none mb-1">{t('dashboard.inflow')}</p>
                   <p className="text-sm md:text-base font-bold font-mono text-white leading-none">
-                    {currencySymbol}{currentMonth.income.toLocaleString()}
+                    {currencySymbol}{formatAmount(currentMonth.income)}
                   </p>
                 </div>
               </button>
@@ -159,7 +159,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <div className="text-left">
                   <p className="text-[9px] font-black text-white/50 uppercase tracking-widest leading-none mb-1">{t('dashboard.outflow')}</p>
                   <p className="text-sm md:text-base font-bold font-mono text-white leading-none">
-                    {currencySymbol}{currentMonth.expense.toLocaleString()}
+                    {currencySymbol}{formatAmount(currentMonth.expense)}
                   </p>
                 </div>
               </button>
@@ -195,26 +195,26 @@ const Dashboard: React.FC<DashboardProps> = ({
           <div className="space-y-2">
             {recentTransactions.length > 0 ? (
               <>
-                {recentTransactions.map((t) => (
+                {recentTransactions.map((tx) => (
                   <button
-                    key={t.id}
-                    onClick={() => onTransactionClick(t)}
+                    key={tx.id}
+                    onClick={() => onTransactionClick(tx)}
                     className="w-full card p-3 md:p-4 flex items-center gap-3 md:gap-4 border border-[#AF8F42]/30 dark:border-[#AF8F42]/40 hover:border-[#AF8F42]/60 transition-all duration-500 ease-out hover:shadow-xl hover:shadow-[#AF8F42]/10 group active:scale-[0.99]"
                   >
-                    <div className={`size-12 rounded-lg flex items-center justify-center shrink-0 ${t.type === 'income' ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'
+                    <div className={`size-12 rounded-lg flex items-center justify-center shrink-0 ${tx.type === 'income' ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'
                     }`}>
-                      <span className="material-symbols-outlined text-2xl">{t.type === 'income' ? 'trending_up' : 'payments'}</span>
+                      <span className="material-symbols-outlined text-2xl">{tx.type === 'income' ? 'trending_up' : 'payments'}</span>
                     </div>
                     <div className="flex-1 text-left min-w-0">
-                      <p className="font-bold text-stone-900 dark:text-white truncate">{t.title}</p>
+                      <p className="font-bold text-stone-900 dark:text-white truncate">{tx.title}</p>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className={`text-[10px] font-extrabold uppercase tracking-widest leading-none ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-500 dark:text-stone-400'}`}>{t.type === 'income' ? useLanguage().t('common.income') : useLanguage().t('common.expense')}</span>
+                        <span className={`text-[10px] font-extrabold uppercase tracking-widest leading-none ${tx.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-500 dark:text-stone-400'}`}>{tx.type === 'income' ? t('common.income') : t('common.expense')}</span>
                         <span className="text-[8px] text-stone-300 dark:text-stone-700 font-black leading-none">•</span>
-                        <span className="text-[10px] font-medium text-stone-500 dark:text-stone-400 uppercase tracking-wider leading-none">{formatDate(t.date, language)}</span>
+                        <span className="text-[10px] font-medium text-stone-500 dark:text-stone-400 uppercase tracking-wider leading-none">{formatDate(tx.date, language)}</span>
                       </div>
                     </div>
-                    <div className={`font-bold text-lg ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-900 dark:text-white'}`}>
-                      {t.type === 'income' ? '+' : '-'}{currencySymbol}{t.amount.toLocaleString()}
+                    <div className={`font-bold text-lg ${tx.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-stone-900 dark:text-white'}`}>
+                      {tx.type === 'income' ? '+' : '-'}{currencySymbol}{formatAmount(tx.amount)}
                     </div>
                   </button>
                 ))}
@@ -266,7 +266,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <span className="text-stone-400 group-hover:text-stone-300 transition-colors">{t('dashboard.monthly_budget')}</span>
                 {monthlyBudget !== null ? (
                   <span className="font-bold text-[#AF8F42] flex items-center gap-1.5">
-                    {currencySymbol}{monthlyBudget.toLocaleString()}
+                    {currencySymbol}{formatAmount(monthlyBudget)}
                     <span className="material-symbols-outlined text-[14px] text-stone-500 group-hover:text-[#AF8F42] transition-colors">edit</span>
                   </span>
                 ) : (
@@ -297,8 +297,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                   </div>
                   <p className="text-[10px] text-stone-500">
                     {currentMonth.expense > monthlyBudget
-                      ? <span className="text-rose-400 font-bold">{t('dashboard.over_budget', { amount: currencySymbol + (currentMonth.expense - monthlyBudget).toLocaleString() })}</span>
-                      : <span>{t('dashboard.remaining', { amount: currencySymbol + (monthlyBudget - currentMonth.expense).toLocaleString() })}</span>
+                      ? <span className="text-rose-400 font-bold">{t('dashboard.over_budget', { amount: currencySymbol + formatAmount(currentMonth.expense - monthlyBudget) })}</span>
+                      : <span>{t('dashboard.remaining', { amount: currencySymbol + formatAmount(monthlyBudget - currentMonth.expense) })}</span>
                     }
                   </p>
                 </div>

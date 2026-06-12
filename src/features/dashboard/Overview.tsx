@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { Transaction, MonthlyData } from '../../entities/types';
-import { formatDate } from '../../entities/financial';
+import { formatDate, formatAmount, getMonthIndex, getMonthName } from '../../entities/financial';
 import ConfirmModal from '../../shared/ui/ConfirmModal';
 import { useLanguage } from '../../application/contexts/LanguageContext';
 
@@ -29,12 +29,8 @@ const Overview: React.FC<OverviewProps> = ({ month, transactions, onBack, onTran
 
   const getLocalizedMonth = useCallback((monthName: string, year: number) => {
     if (monthName === 'Unknown') return monthName;
-    try {
-      const date = new Date(`${monthName} 1, ${year}`);
-      return date.toLocaleString(language === 'bn' ? 'bn-BD' : 'en-US', { month: 'long' });
-    } catch {
-      return monthName;
-    }
+    const monthIndex = getMonthIndex(monthName);
+    return getMonthName(monthIndex, language === 'bn');
   }, [language]);
 
   const filteredTransactions = useMemo(() => {
@@ -96,7 +92,7 @@ const Overview: React.FC<OverviewProps> = ({ month, transactions, onBack, onTran
       const day = dObj.getDate();
       const dateKey = `${year}-${String(monthVal).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       if (!grouped[dateKey]) {
-        const monthName = dObj.toLocaleString(language === 'bn' ? 'bn-BD' : 'en-US', { month: 'long' });
+        const monthName = getMonthName(dObj.getMonth(), language === 'bn');
         grouped[dateKey] = { label: `${day} ${monthName} - ${year}`, transactions: [] };
       }
       grouped[dateKey].transactions.push(t);
@@ -133,7 +129,7 @@ const Overview: React.FC<OverviewProps> = ({ month, transactions, onBack, onTran
           </div>
           <div>
             <p className="text-xs font-bold text-stone-500 uppercase tracking-wider">{t('dashboard.total_income')}</p>
-            <p className="text-2xl font-bold text-stone-900 dark:text-white">{currencySymbol}{(month.income || 0).toLocaleString()}</p>
+            <p className="text-2xl font-bold text-stone-900 dark:text-white">{currencySymbol}{formatAmount(month.income || 0)}</p>
           </div>
         </div>
         <div className="card p-3 md:p-4 flex items-center gap-4">
@@ -142,7 +138,7 @@ const Overview: React.FC<OverviewProps> = ({ month, transactions, onBack, onTran
           </div>
           <div>
             <p className="text-xs font-bold text-stone-500 uppercase tracking-wider">{t('dashboard.total_expense')}</p>
-            <p className="text-2xl font-bold text-stone-900 dark:text-white">{currencySymbol}{(month.expense || 0).toLocaleString()}</p>
+            <p className="text-2xl font-bold text-stone-900 dark:text-white">{currencySymbol}{formatAmount(month.expense || 0)}</p>
           </div>
         </div>
       </div>
@@ -251,7 +247,7 @@ const Overview: React.FC<OverviewProps> = ({ month, transactions, onBack, onTran
                     </h3>
                     <div className="flex-1 h-px bg-stone-200 dark:bg-stone-700" />
                     <span className={`text-xs font-black tabular-nums whitespace-nowrap ${dailyNet > 0 ? 'text-rose-500 dark:text-rose-400' : dailyNet < 0 ? 'text-green-600 dark:text-green-400' : 'text-stone-400'}`}>
-                      {dailyNet > 0 ? `-${currencySymbol}${dailyNet.toLocaleString()}` : dailyNet < 0 ? `+${currencySymbol}${Math.abs(dailyNet).toLocaleString()}` : `${currencySymbol}0`}
+                      {dailyNet > 0 ? `-${currencySymbol}${formatAmount(dailyNet)}` : dailyNet < 0 ? `+${currencySymbol}${formatAmount(Math.abs(dailyNet))}` : `${currencySymbol}0`}
                     </span>
                   </div>
 
@@ -281,7 +277,7 @@ const Overview: React.FC<OverviewProps> = ({ month, transactions, onBack, onTran
                             </div>
                             <div className="text-right">
                               <p className={`font-bold text-lg ${tItem.type === 'expense' ? 'text-stone-900 dark:text-white' : 'text-green-600 dark:text-green-400'}`}>
-                                {tItem.type === 'expense' ? '-' : '+'}{currencySymbol}{tItem.amount.toLocaleString()}
+                                {tItem.type === 'expense' ? '-' : '+'}{currencySymbol}{formatAmount(tItem.amount)}
                               </p>
                             </div>
                           </button>
@@ -335,7 +331,7 @@ const Overview: React.FC<OverviewProps> = ({ month, transactions, onBack, onTran
                   <p className="text-[10px] text-stone-400 uppercase tracking-wide">{tItem.type === 'income' ? t('common.income') : t('common.expense')}</p>
                 </div>
                 <span className={`text-xs font-bold tabular-nums ${tItem.type === 'expense' ? 'text-stone-700 dark:text-stone-300' : 'text-green-600 dark:text-green-400'}`}>
-                  {tItem.type === 'expense' ? '-' : '+'}{currencySymbol}{tItem.amount.toLocaleString()}
+                  {tItem.type === 'expense' ? '-' : '+'}{currencySymbol}{formatAmount(tItem.amount)}
                 </span>
               </div>
             ))}

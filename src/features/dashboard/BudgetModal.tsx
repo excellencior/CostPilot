@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { BudgetPlan } from '../../entities/types';
 import { LocalRepository } from '../../infrastructure/local/local-repository';
+import { formatAmount, getMonthIndex, getMonthName } from '../../entities/financial';
 import NumericKeypad from '../../shared/ui/NumericKeypad';
 import ConfirmModal from '../../shared/ui/ConfirmModal';
 import { useLanguage } from '../../application/contexts/LanguageContext';
@@ -44,12 +45,8 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
 
     const getLocalizedMonth = (monthName: string, year: number) => {
         if (monthName === 'Unknown') return monthName;
-        try {
-            const date = new Date(`${monthName} 1, ${year}`);
-            return date.toLocaleString(language === 'bn' ? 'bn-BD' : 'en-US', { month: 'long' });
-        } catch {
-            return monthName;
-        }
+        const monthIndex = getMonthIndex(monthName);
+        return getMonthName(monthIndex, language === 'bn');
     };
 
     useEffect(() => {
@@ -177,7 +174,7 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
                             {activeBudget !== null && mode !== 'edit' && (
                                 <div className="p-3 rounded-xl bg-[#AF8F42]/5 dark:bg-[#AF8F42]/10 border border-[#AF8F42]/20 flex items-center justify-between animate-scale-in">
                                     <span className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">{t('budget.active_budget')}</span>
-                                    <span className="text-lg font-black text-[#AF8F42]">{currencySymbol}{activeBudget.toLocaleString()}</span>
+                                    <span className="text-lg font-black text-[#AF8F42]">{currencySymbol}{formatAmount(activeBudget || 0)}</span>
                                 </div>
                             )}
 
@@ -230,7 +227,7 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
                                                         <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wider">{t('budget.plan_label')}</p>
                                                     </div>
                                                 </div>
-                                                <p className="text-base font-black text-stone-900 dark:text-white">{currencySymbol}{plan.amount.toLocaleString()}</p>
+                                                <p className="text-base font-black text-stone-900 dark:text-white">{currencySymbol}{formatAmount(plan.amount)}</p>
                                             </button>
 
                                             {/* Delete button in edit mode */}
